@@ -1,0 +1,32 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+    id      Int @id @default(autoincrement())
+    name String
+    description String?
+    folderPath String
+    creationTime DateTime @default(now())
+    files MediaFile[]
+}
+
+model MediaFile {
+    id Int @id @default(autoincrement())
+    fileName String
+    filePath String
+    fileType String
+    creationTime DateTime @default(now())
+    projectID Int?
+    project Project? @relation(fields: [projectID], references: [id])
+}
