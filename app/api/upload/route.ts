@@ -41,8 +41,10 @@ export async function POST(request: Request)
             return NextResponse.json({error: "Project not found"}, {status: 404})
         }
 
+        const relFolder = project.folderPath || `uploads/project-${project.id}`
+
         // Check for the directory, create a new folder if it doesn't exist
-        const projectDirectory = join(process.cwd(), 'public', project.folderPath);
+        const projectDirectory = join(process.cwd(), 'public', relFolder);
         await mkdir(projectDirectory, {recursive: true});
 
         // Turn file into binary data and then format so Node.js can write it

@@ -1,80 +1,100 @@
-'use client'; // Run on browser
-import {useState, SyntheticEvent} from "react";
-import axios from 'axios'; // For sending data to backend
-import {useRouter} from 'next/navigation'; // For page navigation
+'use client';
 
-// Require a projectID to use the FileUploadForm
-interface Props {
-    projectID: number;
-}
+import {useRef, useState} from 'react';
+import {useRouter} from 'next/navigation';
 
-// Define component
-export default function FileUploadForm({projectID}: Props)
+export default function FileUploader({projectId}:{projectId:number})
 {
-    const [file, setFile] = useState<File | null>(null);
-    const [status, setStatus] = useState('Idle');
+    const [uploading, setUploading] = useState(false);
+    const [currentFileName, setCurrentFileName] = useState("");
+    const [progressText, setProgressText] = useState("");
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleUpload = async (e: SyntheticEvent) => {
-        e.preventDefault(); // Prevent automatic reloads
+    const handleButtonClick = () => {
+        fileInputRef.current?.click();
+    }
 
-        if (!file)
+    async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>)
+    {
+        const files = event.target.files;
+        if (!files || files.length === 0)
         {
             return;
         }
 
-        setStatus('Uploading...'); // Upload
+        const file = files[0];
+        setUploading(true);
 
-        // Add the file and its ID to a form data
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', projectID.toString());
+        for (let i = 0; i < files.length; i++)
+        {
+            const file = files[i];
+            setCurrentFileName(file.name);
+            setProgressText("Uploading file ${file.name} (${i+1} of ${files.length}");
+        }
 
         try
         {
-            // Use api route to send the form data
-            await axios.post('/api/upload', formData);
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("projectID", projectId.toString())
 
-            setStatus('Success');
-            setFile(null); // Reset form
-            router.refresh(); // Refresh page to show the upload
+            const response = await fetch ("/api/upload", {
+                method: "POST",
+                body: formData,
+            })
 
-            setTimeout(() => setStatus('Idle'), 2000);
+            if (!response.ok)
+            {
+                throw new Error("File upload failed.");
+            }
+
+
         }
         catch (error)
         {
             console.error(error);
-            setStatus('Error');
+            alert(`File Upload Error for ${file.name}`);
         }
+
+        setUploading(false);
+        router.refresh();
+
+        if (event.target)
+        {
+            event.target.value = "";
+        }
+
     }
 
-    return(
-        <div className = "bg-white p-6 rounded-lg border shadow-sm mb-8">
-            <h3 className = "font-bold text-lg mb-4">Upload Media</h3>
+    return (
+        <>
+            <button className="regular-button" onClick={handleButtonClick}>
+                <span>Upload File</span>
+            </button>
 
-            <form onSubmit={handleUpload} className = "flex gap-4 items-center">
-                <input
-                    type="file"
-                    onChange={(e) => {
-                    if (e.target.files) setFile(e.target.files[0]);
-                    }}
+            <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileChange}
+            multiple
+            accept="video/*, image/*, .vtt, .docx"/>
 
-                    className="block w-full text-sm text-gray-500
-                    file: mr-4 file: py-2 file:px-4
-                    file: rounded-full file:border-0
-                    file: text-sm file: font-semibold
-                    file: bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
-                    />
+            {uploading && (<div>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+                        <h3>Uploading...</h3>
+                        <span>{progressText}</span>
+                    </div>
 
-                <button
-                    type="submit"
-                    disabled={!file || status == "Uploading..."}
-                    className = "bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >{status == "Uploading..." ? "Uploading..." : "upload"}</button>
-            </form>
-            {status === "Success" && <p className = "text-green-600 mt-2 text-sm">File uploaded successfully!</p>}
-            {status === "Error" && <p className = "text-red-600 mt-2 text-sm">Upload failed.</p>}
-        </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div className="bg-blue-600 h-2 rounded-full w-full animate-pulse"></div>
+
+                    </div>
+
+                </div>
+            </div>)}
+        </>
     )
 }

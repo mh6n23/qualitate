@@ -27,6 +27,6 @@ model MediaFile {
     filePath String
     fileType String
     creationTime DateTime @default(now())
-    projectID Int?
-    project Project? @relation(fields: [projectID], references: [id])
+    projectID Int
+    project Project @relation(fields: [projectID], references: [id])
 }
