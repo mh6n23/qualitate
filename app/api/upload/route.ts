@@ -1,7 +1,31 @@
 import {NextResponse} from "next/server"; // Sends answers to user
 import {prisma} from '@/lib/prisma'; // Connects to database
 import {writeFile, mkdir} from "fs/promises"; // For accessing user's drive
-import {join} from 'path'; // For using file systems on different operating systems
+import {join, extname} from 'path';
+
+function getFileCategory(file: File) : string
+{
+    const fileType = file.type;
+
+    if (fileType.startsWith("video/"))
+    {
+        return "Videos";
+    }
+    else if (fileType.startsWith("image/"))
+    {
+        return "Images";
+    }
+
+    const fileExtension = extname(file.name).toLowerCase();
+    const transcriptExtensions = [".vtt", ".srt", ".docx", ".doc", ".txt", ".pdf"]
+
+    if (transcriptExtensions.includes(fileExtension))
+    {
+        return "Transcripts";
+    }
+
+    return "Unknown Files";
+}
 
 // async runs in background
 export async function POST(request: Request)
@@ -41,7 +65,9 @@ export async function POST(request: Request)
             return NextResponse.json({error: "Project not found"}, {status: 404})
         }
 
-        const relFolder = project.folderPath || `uploads/project-${project.id}`
+        const catFolder = getFileCategory(file);
+
+        const relFolder = `uploads/project-${project.id}/${catFolder}`
 
         // Check for the directory, create a new folder if it doesn't exist
         const projectDirectory = join(process.cwd(), 'public', relFolder);
@@ -53,12 +79,12 @@ export async function POST(request: Request)
         await writeFile(join(projectDirectory, file.name), buffer);
 
         // Create an entry in the database for the uploaded file
-
+        const databaseFilePath = `/${relFolder}/${file.name}`;
         const newFile = await prisma.mediaFile.create({
             data: {
                 fileName: file.name,
-                filePath: `${project.folderPath}/${file.name}`,
-                fileType: 'Video',
+                filePath: databaseFilePath,
+                fileType: file.type,
                 projectID: project.id,
             },
         });

@@ -3,21 +3,23 @@ import {notFound} from "next/navigation";
 import VideoPlayer from "@/components/VideoPlayer";
 import TranscriptPlayer from "@/components/TranscriptPlayer";
 import FileUploader from "@/components/FileUploadForm";
+import Timeline from "@/components/Timeline";
 
 interface PageProps
 {
-    params: {id:string};
+    params: Promise<{id:string}>;
 }
 
 export default async function ProjectPage({params}: PageProps)
 {
-    /*
+
+    const{id} = await params;
+    const projectId = parseInt(id);
+
     const project = await prisma.project.findUnique({
-        where: {id:parseInt(params.id)},
+        where: {id:projectId},
         include: {
-            files: {
-                orderBy: {creationTime: 'desc'}
-            }
+            files: true
         }
     });
 
@@ -25,9 +27,6 @@ export default async function ProjectPage({params}: PageProps)
     {
         notFound();
     }
-     */
-
-    const project = {id:1, name:"Test Project"};
 
     return (
         <main>
@@ -50,10 +49,13 @@ export default async function ProjectPage({params}: PageProps)
                 <p className="text-xl">Project ID: 1</p>
             </div>
             {/*Main Grid */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-6 flex-1">
                 <div className="col-span-2">
                     <div>
                         <VideoPlayer videoSource="/BigBuckBunny.mp4"/>
+                        <div className="mt-4">
+                            <Timeline files={project.files}/>
+                        </div>
                     </div>
                     <div className="flex items-center justify-center">
                         <div className="flex items-center">Image Stream</div>
