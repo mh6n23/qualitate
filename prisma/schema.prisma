@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  url = env("postgresql://postgres:12March2006@localhost:5432/postgres")
 }
 
 datasource db {
@@ -27,6 +28,7 @@ model MediaFile {
     filePath String
     fileType String
     creationTime DateTime @default(now())
+    duration Float @default(0)
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
 }

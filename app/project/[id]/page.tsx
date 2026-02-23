@@ -3,7 +3,9 @@ import {notFound} from "next/navigation";
 import VideoPlayer from "@/components/VideoPlayer";
 import TranscriptPlayer from "@/components/TranscriptPlayer";
 import FileUploader from "@/components/FileUploadForm";
+import FileViewer from "@/components/FileViewer";
 import Timeline from "@/components/Timeline";
+import PlaybackController from "@/components/PlaybackController";
 
 interface PageProps
 {
@@ -28,11 +30,22 @@ export default async function ProjectPage({params}: PageProps)
         notFound();
     }
 
+    // Collect all the video files via filtering then sort them by their creation time
+    const videoFiles = project.files
+        .filter(f => f.fileType.startsWith("video"))
+        .sort((a, b) => new Date(a.creationTime).getTime() - new Date(b.creationTime).getTime());
+
+    // Set the start time of the project to be the time of the earliest video, else fall back to the project's creation time
+    const startTime = videoFiles.length > 0
+        ? new Date(videoFiles[0].creationTime).getTime()
+        : new Date(project.creationTime).getTime();
+
     return (
-        <main>
-            <div className="grid grid-cols-3 items-center mb-10">
-                <div className="flex justify-start">
+        <main className="p-6 flex flex-col h-screen">
+            <div className="grid grid-cols-3 items-center">
+                <div className="flex justify-start gap-4">
                     <FileUploader projectId={1}/>
+                    <FileViewer files={project.files}/>
                 </div>
 
                 <div className="text-center">
@@ -48,25 +61,9 @@ export default async function ProjectPage({params}: PageProps)
                 {/*<p>Project ID: {params.id}</p>*/}
                 <p className="text-xl">Project ID: 1</p>
             </div>
+
             {/*Main Grid */}
-            <div className="grid grid-cols-3 gap-6 flex-1">
-                <div className="col-span-2">
-                    <div>
-                        <VideoPlayer videoSource="/BigBuckBunny.mp4"/>
-                        <div className="mt-4">
-                            <Timeline files={project.files}/>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-center">
-                        <div className="flex items-center">Image Stream</div>
-                    </div>
-                </div>
-
-                <div className="col-span-1">
-                    <TranscriptPlayer/>
-                </div>
-
-            </div>
+            <PlaybackController files={project.files} projectStartTime={startTime}/>
 
         </main>
     );

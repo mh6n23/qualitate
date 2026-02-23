@@ -36,6 +36,7 @@ export async function POST(request: Request)
         const data = await request.formData();
         const file: File | null = data.get('file') as unknown as File;
         const projectID = data.get('projectID') as string;
+        const duration = parseFloat(data.get('duration') as string) || 0;
 
         if (!file || !projectID)
         {
@@ -86,6 +87,7 @@ export async function POST(request: Request)
                 filePath: databaseFilePath,
                 fileType: file.type,
                 projectID: project.id,
+                duration: duration
             },
         });
 

@@ -15,6 +15,36 @@ export default function FileUploader({projectId}:{projectId:number})
         fileInputRef.current?.click();
     }
 
+    // Grabs the duration of a video
+    const getDuration = (file: File): Promise<number> => {
+        // Wait for the resolve to complete before returning a value
+        return new Promise(resolve => {
+            // Set the duration to 0 if the file isn't a video
+            if (!file.type.startsWith("video/")) {
+                resolve(0);
+                return;
+            }
+
+            // Create an invisible video and get the header information
+            const video = document.createElement("video");
+            video.preload = "metadata";
+
+            // Once the metadata has been read delete the URL
+            video.onloadedmetadata = () => {
+                window.URL.revokeObjectURL(video.src);
+                resolve(video.duration);
+            };
+
+            // Default to 0 if there's a problem
+            video.onerror = () => {
+                resolve(0);
+            }
+
+            // Load the video
+            video.src = URL.createObjectURL(file);
+        })
+    }
+
     async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>)
     {
         const files = event.target.files;

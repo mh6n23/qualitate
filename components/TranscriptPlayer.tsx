@@ -34,14 +34,12 @@ export default function TranscriptPlayer() {
     }, [currTime]);
 
     return (
-        <div className="flex flex-col h-[500px] border">
-            <div>
-                Transcript
-            </div>
+        <div className="flex flex-col h-full w-full border">
+
             <div className="flex-1 overflow-y-auto">
                 {
                     transcriptData.map((line, index) => {
-                        const isCurrLine = currTime >= line.start && currTime <= line.end;
+                        const isCurrLine = currTime >= line.start && currTime < line.end;
 
                         return (
                             <div
