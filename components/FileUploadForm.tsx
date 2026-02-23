@@ -53,38 +53,37 @@ export default function FileUploader({projectId}:{projectId:number})
             return;
         }
 
-        const file = files[0];
         setUploading(true);
 
-        for (let i = 0; i < files.length; i++)
-        {
+        for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            const timestamp = new Date(file.lastModified).toISOString();
             setCurrentFileName(file.name);
-            setProgressText("Uploading file ${file.name} (${i+1} of ${files.length}");
-        }
+            setProgressText(`Uploading file ${file.name} (${i + 1} of ${files.length}`);
 
-        try
-        {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("projectID", projectId.toString())
+            try {
+                const duration = await getDuration(file);
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("projectID", projectId.toString())
+                formData.append("duration", duration.toString())
+                formData.append("creationTime", timestamp)
 
-            const response = await fetch ("/api/upload", {
-                method: "POST",
-                body: formData,
-            })
+                const response = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                });
 
-            if (!response.ok)
-            {
-                throw new Error("File upload failed.");
+                if (!response.ok) {
+                    throw new Error(`File upload failed for ${file.name}.`);
+                }
+
+                // Remove to speedup
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+                console.error(error);
+                alert(`File Upload Error for ${file.name}`);
             }
-
-
-        }
-        catch (error)
-        {
-            console.error(error);
-            alert(`File Upload Error for ${file.name}`);
         }
 
         setUploading(false);

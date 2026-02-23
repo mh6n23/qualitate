@@ -15,3 +15,5 @@ export const projectDescAtom = atom('');
 
 export const currTimeAtom = atom(0);
 export const playingAtom = atom(false);
+
+export const playSpeedAtom = atom(1);

@@ -81,13 +81,15 @@ export async function POST(request: Request)
 
         // Create an entry in the database for the uploaded file
         const databaseFilePath = `/${relFolder}/${file.name}`;
+        const timestamp = data.get('creationTime') as string;
         const newFile = await prisma.mediaFile.create({
             data: {
                 fileName: file.name,
                 filePath: databaseFilePath,
                 fileType: file.type,
                 projectID: project.id,
-                duration: duration
+                duration: duration,
+                creationTime: new Date(timestamp)
             },
         });
 

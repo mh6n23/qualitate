@@ -32,7 +32,7 @@ export default async function ProjectPage({params}: PageProps)
 
     // Collect all the video files via filtering then sort them by their creation time
     const videoFiles = project.files
-        .filter(f => f.fileType.startsWith("video"))
+        .filter(f => f.filePath.includes("/Videos"))
         .sort((a, b) => new Date(a.creationTime).getTime() - new Date(b.creationTime).getTime());
 
     // Set the start time of the project to be the time of the earliest video, else fall back to the project's creation time
@@ -44,7 +44,7 @@ export default async function ProjectPage({params}: PageProps)
         <main className="p-6 flex flex-col h-screen">
             <div className="grid grid-cols-3 items-center">
                 <div className="flex justify-start gap-4">
-                    <FileUploader projectId={1}/>
+                    <FileUploader projectId={projectId}/>
                     <FileViewer files={project.files}/>
                 </div>
 
@@ -59,10 +59,10 @@ export default async function ProjectPage({params}: PageProps)
             </div>
             <div className="text-center">
                 {/*<p>Project ID: {params.id}</p>*/}
-                <p className="text-xl">Project ID: 1</p>
+                <p className="text-xl">Project ID: {projectId}</p>
             </div>
 
-            {/*Main Grid */}
+            {/* The 3 views and the timeline */}
             <PlaybackController files={project.files} projectStartTime={startTime}/>
 
         </main>

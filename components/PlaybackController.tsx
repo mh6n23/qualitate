@@ -6,6 +6,7 @@ import {MediaFile} from '@prisma/client'
 import VideoPlayer from '@/components/VideoPlayer';
 import TranscriptPlayer from '@/components/TranscriptPlayer';
 import Timeline from '@/components/Timeline';
+import PlaybackRemote from "@/components/PlaybackRemote";
 
 interface PlaybackControllerProps {
     files: MediaFile[];
@@ -25,6 +26,8 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
             const startTime = new Date(file.creationTime).getTime();
             const duration = file.duration > 0 ? (file.duration * 1000) : 10000;
             const endTime = startTime + duration;
+
+            return playNeedle >= startTime && playNeedle <= endTime;
         })
     }
 
@@ -33,7 +36,7 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
     const currentTranscript = getCurrentFile("/Transcripts");
 
     return (
-        <div className = "flex flex-col  w-full mt-4">
+        <div className = "flex flex-col w-full mt-4">
 
             {/* Divide page into 3 columns */}
             <div className="grid grid-cols-3 gap-4 h-100">
@@ -57,7 +60,7 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
                         {currentImage ? currentImage.fileName : "Image Stream"}
                     </div>
                     <div className="bg-gray-200 flex flex-1 flex-col items-center justify-center rounded border border-gray-400 relative overflow-hidden p-2">
-                        {currentImage ? (<img src={currentImage.filePath} className="h-full object-contain"/>)
+                        {currentImage ? (<img src={currentImage.filePath} className="max-w-full max-h-full object-contain"/>)
                             : (<div className="text-gray-500">No Image Exists at this Timestamp</div>)
                         }
                     </div>
@@ -72,14 +75,14 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
                         <TranscriptPlayer/>
                     </div>
                 </div>
-
-
-
-
             </div>
 
-            <div className="w-full border-t border-gray-300 pt-4">
-            <Timeline files={files} projectStartTime={projectStartTime}/>
+            <div className="mt-4">
+                <PlaybackRemote projectStartTime={projectStartTime}/>
+            </div>
+
+            <div className="w-full border-t border-gray-300">
+                <Timeline files={files} projectStartTime={projectStartTime}/>
             </div>
         </div>
     )

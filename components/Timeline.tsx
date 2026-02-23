@@ -20,7 +20,8 @@ function FileBlock({file, projectStartTime, pixelsPerSecond} : {file: MediaFile,
     const position = offsetSeconds * pixelsPerSecond;
 
     // 20 is placeholder now for images
-    const width = Math.max(file.duration * pixelsPerSecond, 20);
+    const shownDuration = file.duration > 0 ? file.duration : 10;
+    const width = shownDuration * pixelsPerSecond;
 
     return (
     <div className="absolute h-8 bg-blue-600 rounded text-white text-[10px] truncate px-1 flex items-center"
@@ -60,9 +61,9 @@ export default function Timeline({files, projectStartTime}:TimelineProps)
 
     const currTime = useAtomValue(currTimeAtom);
 
-    const videoFiles = files.filter(f => f.fileType.startsWith("video"));
-    const imageFiles = files.filter(f => f.filePath.startsWith("image"));
-    const transcriptFiles = files.filter(f => f.filePath.includes("/Transcripts"));
+    const videoFiles = files.filter(f => f.filePath.includes("/Videos/"));
+    const imageFiles = files.filter(f => f.filePath.includes("/Images/"));
+    const transcriptFiles = files.filter(f => f.filePath.includes("/Transcripts/"));
 
     return(
         <div className="bg-gray-400 border-2 border-gray-800 overflow-x-auto relative min-h-[100px]">
@@ -74,7 +75,7 @@ export default function Timeline({files, projectStartTime}:TimelineProps)
             <div className="flex flex-col min-w-full">
                 <Track label="VIDEOS" files={videoFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}/>
                 <Track label="IMAGES" files={imageFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}/>
-                <Track label="TEXT" files={transcriptFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}/>
+                <Track label="TRANSCRIPTS" files={transcriptFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}/>
             </div>
         </div>
 
