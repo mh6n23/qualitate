@@ -35,6 +35,27 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
     const currentImage = getCurrentFile("/Images");
     const currentTranscript = getCurrentFile("/Transcripts");
 
+    const videoFiles = files.filter(f => f.filePath.includes("/Videos"));
+
+    // Default until changed by end time of final video (for now)
+    let projectDurationSecs = 10;
+    if (videoFiles.length > 0)
+    {
+        // Sort videos in descending order
+        const sortedVids = [...videoFiles].sort((a, b) =>
+        new Date(b.creationTime).getTime() - new Date(a.creationTime).getTime());
+
+        // Grab last video
+        const lastVideo = sortedVids[0];
+
+        const lastVidStartTime = new Date(lastVideo.creationTime).getTime();
+        const lastVidDuration = lastVideo.duration > 0 ?
+            (lastVideo.duration * 1000) : 10000;
+
+        const projectEndTime = lastVidStartTime + lastVidDuration;
+        projectDurationSecs = (projectEndTime - projectStartTime) / 1000;
+    }
+
     return (
         <div className = "flex flex-col w-full mt-4">
 
@@ -48,7 +69,7 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
                     </div>
                     <div className="bg-black flex flex-1 flex-col items-center justify-center rounded border border-gray-700 relative overflow-hidden">
                         {currentVideo ?
-                            (<VideoPlayer key={currentVideo.id} videoSource={currentVideo.filePath}/>)
+                            (<VideoPlayer key={currentVideo.id} file={currentVideo} projectStartTime={projectStartTime} />)
                             : (<div className="text-gray-500">No Video Exists at this Timestamp</div>)
                         }
                     </div>
@@ -78,7 +99,7 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
             </div>
 
             <div className="mt-4">
-                <PlaybackRemote projectStartTime={projectStartTime}/>
+                <PlaybackRemote projectStartTime={projectStartTime} projectDuration={projectDurationSecs}/>
             </div>
 
             <div className="w-full border-t border-gray-300">

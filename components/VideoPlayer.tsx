@@ -3,38 +3,61 @@
 import {useAtomValue, useSetAtom} from 'jotai';
 import {currTimeAtom, playingAtom} from "@/app/atoms";
 import {useEffect, useRef} from 'react';
+import {MediaFile} from '@prisma/client';
 
-export default function VideoPlayer({videoSource}: {videoSource: string}) {
-    const setTime = useSetAtom(currTimeAtom);
-    const setPlaying = useSetAtom(playingAtom);
-    const currTime = useAtomValue(currTimeAtom);
+interface Props {
+    file: MediaFile;
+    projectStartTime: number;
+}
+
+export default function VideoPlayer({file, projectStartTime}: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const playing = useAtomValue(playingAtom);
+    const currTime = useAtomValue(currTimeAtom);
 
-    // Runs whenever currTimeAtom changes
     useEffect(() => {
-        if (videoRef.current)
+        const video = videoRef.current;
+
+        if (!video)
         {
-            if (Math.abs(videoRef.current.currentTime - currTime) > 0.5)
-            {
-                videoRef.current.currentTime = currTime
-            }
+            return;
         }
-    }, [currTime]);
+
+        if (playing)
+        {
+            video.play();
+        }
+        else
+        {
+            video.pause();
+        }
+    }, [playing]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+
+        if (!video)
+        {
+            return;
+        }
+
+        const playPosition = projectStartTime + (currTime * 1000);
+        const videoStartPosition = new Date(file.creationTime).getTime();
+        const videoPlayPosition = (playPosition - videoStartPosition) / 1000;
+
+        // Check video position if it is massively out of sync.
+        if (Math.abs(video.currentTime - videoPlayPosition) > 0.25)
+        {
+            video.currentTime = videoPlayPosition;
+        }
+    }, [currTime, file.creationTime, projectStartTime]);
 
     return (
         <video
+            ref={videoRef}
+            src={file.filePath}
             className="w-full h-auto"
-        ref={videoRef}
-        src={videoSource}
-        controls
-        onTimeUpdate={() => {
-            if (videoRef.current) {
-                setTime(videoRef.current.currentTime);
-            }
-        }}
-        // Update the states so that the other data streams will pause/play at the same time
-        onPlay = {() => setPlaying(true)}
-        onPause = {() => setPlaying(false)}/>
+        />
     );
 
 }

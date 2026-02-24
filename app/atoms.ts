@@ -17,3 +17,5 @@ export const currTimeAtom = atom(0);
 export const playingAtom = atom(false);
 
 export const playSpeedAtom = atom(1);
+
+export const pixelsPerSecondAtom = atom(20);

@@ -1,14 +1,15 @@
 'use client'
 
 import {useAtom} from 'jotai';
-import {currTimeAtom, playingAtom, playSpeedAtom} from "@/app/atoms";
+import {currTimeAtom, pixelsPerSecondAtom, playingAtom, playSpeedAtom} from "@/app/atoms";
 import {useEffect, useRef} from "react";
 import {apply} from "effect/Function";
 
-export default function PlaybackRemote({projectStartTime}:{projectStartTime:number}) {
+export default function PlaybackRemote({projectStartTime, projectDuration}:{projectStartTime:number, projectDuration:number}) {
     const [currTime, setCurrTime] = useAtom(currTimeAtom);
     const [isPlaying, setIsPlaying] = useAtom(playingAtom);
     const [playSpeed, setPlaySpeed] = useAtom(playSpeedAtom);
+    const [pixelsPerSecond, setPixelsPerSecond] = useAtom(pixelsPerSecondAtom);
 
     const reqRef = useRef<number>(null);
     const prevTimeRef = useRef<number>(null);
@@ -28,7 +29,10 @@ export default function PlaybackRemote({projectStartTime}:{projectStartTime:numb
             const changeInTime = (time - prevTimeRef.current) / 1000;
 
             // Update Jotai Atom
-            setCurrTime(previousTime => previousTime + (changeInTime * playSpeed));
+            setCurrTime(previousTime => {
+                const currentTime = previousTime + (changeInTime * playSpeed)
+                return Math.max(0, currentTime);
+            });
         }
         // Store the current time for the next time this function is run
         prevTimeRef.current = time;
@@ -69,6 +73,15 @@ export default function PlaybackRemote({projectStartTime}:{projectStartTime:numb
 
     }, [isPlaying, playSpeed]);
 
+    useEffect(() => {
+        if (currTime <= 0 && playSpeed < 0 && isPlaying)
+        {
+            setIsPlaying(false);
+            setPlaySpeed(1);
+            setCurrTime(0);
+        }
+    }, [currTime, playSpeed, isPlaying]);
+
     const changeSpeed = (newSpeed: number) => {
         if (playSpeed === newSpeed) {
             // Reset if the same button is pressed again
@@ -83,6 +96,14 @@ export default function PlaybackRemote({projectStartTime}:{projectStartTime:numb
                 setIsPlaying(true);
             }
         }
+    }
+
+    const zoomOut = () => {
+        setPixelsPerSecond(prev => Math.max(prev-5, 5));
+    }
+
+    const zoomIn = () => {
+        setPixelsPerSecond(prev => Math.min(prev+5, 100));
     }
 
     return (
@@ -123,6 +144,22 @@ export default function PlaybackRemote({projectStartTime}:{projectStartTime:numb
                             <path d="M13 6v12l8.5-6L13 6zM4.5 18l8.5-6-8.5-6v12z"/>
                         </svg>
                     </button>
+
+                    {/* Zoom In */}
+                    <button
+                        onClick={zoomIn}
+                        className="text-white text-4xl w-12 h-12 flex items-center justify-center bg-blue-600  hover:bg-blue-500  transition-all active:scale-95 shadow-lg">
+                        +
+                    </button>
+
+                    {/* Zoom Out */}
+                    <button
+                        onClick={zoomOut}
+                        className="text-white text-4xl  w-12 h-12 flex items-center justify-center bg-blue-600  hover:bg-blue-500  transition-all active:scale-95 shadow-lg">
+                        -
+                    </button>
+
+
                 </div>
 
                 <div className="text-white">
@@ -132,7 +169,7 @@ export default function PlaybackRemote({projectStartTime}:{projectStartTime:numb
                 <input
                     type="range"
                     min="0"
-                    max="300"
+                    max={projectDuration}
                     step="0.01"
                     value={currTime}
                     onChange={(e) => setCurrTime(parseFloat(e.target.value))}
