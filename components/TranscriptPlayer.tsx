@@ -2,65 +2,168 @@
 
 import {useAtomValue, useSetAtom} from 'jotai';
 import {currTimeAtom} from "@/app/atoms";
-import {useEffect, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
+import {MediaFile} from '@prisma/client';
 
-const transcriptData = [
-    {start: 0, end: 5, text: "Sample line 1"},
-    {start: 5, end: 10, text: "Sample line 2"},
-    {start: 10, end: 15, text: "Sample line 3" },
-    {start: 20, end: 25, text: "Sample line 4"},
-    {start: 25, end: 30, text: "Sample line 5"},
-    {start: 35, end: 40, text: "Sample line 6" },
-    {start: 40, end: 45, text: "Sample line 7"},
-    {start: 45, end: 50, text: "Sample line 8" },
+interface Props {
+    file: MediaFile;
+    projectStartTime: number;
+}
 
-];
+interface Line {
+    id: number;
+    startTime: number;
+    endTime: number;
+    text: string;
+}
 
-export default function TranscriptPlayer() {
+export default function TranscriptPlayer({file, projectStartTime}:Props) {
+    const [lines, setLines] = useState<Line[]>([]);
+
     const currTime = useAtomValue(currTimeAtom);
     const setTime = useSetAtom(currTimeAtom);
-    const scriptRef = useRef<HTMLDivElement>(null);
+    const activeRef = useRef<HTMLDivElement>(null);
 
-    function formatTime(seconds: number) {
-        const minutes = Math.floor(seconds/60);
-        const remSeconds = Math.floor(seconds%60);
-        return `${minutes}:${remSeconds.toString().padStart(2, "0")}`;
+    function formatTime(totalSeconds: number) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function convertTimeToSeconds (timeString: string) : number {
+        const components = timeString.trim().split(':');
+        let seconds = 0;
+
+        // Convert differently depending on if hours are included in the time
+        if (components.length === 3)
+        {
+            seconds = (parseInt(components[0]) * 3600) + (parseInt(components[1]) * 60) + parseFloat(components[2]);
+        }
+        else if (components.length === 2)
+        {
+            seconds = (parseInt(components[0]) * 60) + parseFloat(components[1])
+        }
+        return seconds;
+    }
+
+    function parseTranscript(text: string): Line[] {
+        const lines: Line[] = [];
+        const regex = /\[([\d:]+)[ \-]+([\d:]+)]\s*([^\[]+)/g;
+        let match;
+        let index = 0;
+
+        while ((match = regex.exec(text)) !== null)
+        {
+            const startTime = match[1];
+            const endTime = match[2];
+            const content = match[3].trim();
+
+            if (content)
+            {
+                lines.push(
+                    {
+                        id: index++,
+                        startTime: convertTimeToSeconds(startTime),
+                        endTime: convertTimeToSeconds(endTime),
+                        text: content
+                    }
+                );
+            }
+        }
+        return lines;
     }
 
     useEffect(() => {
-        if (scriptRef.current) {
-            scriptRef.current.scrollIntoView({behavior: "smooth", block: "center"});
+        if (!file)
+        {
+            return;
         }
-    }, [currTime]);
+
+        let fileActive = true;
+
+        const getTranscript = async () => {
+            try
+            {
+                const transcriptFile = await fetch(file.filePath);
+                const transcriptText = await transcriptFile.text();
+                const parsedLines = parseTranscript(transcriptText);
+
+                if (fileActive)
+                {
+                    setLines(parsedLines);
+                }
+            }
+            catch (error)
+            {
+                console.error("Couldn't load transcript" + file.fileName + ":" + error);
+            }
+        }
+
+        getTranscript();
+
+        return() => {
+            fileActive = false;
+        }
+
+
+    }, [file]); // Run whenever the active transcript file changes
+
+
+
+
+    const fileStartTime = new Date(file.creationTime).getTime();
+    const offsetSeconds = (fileStartTime - projectStartTime) / 1000;
+    const filePositionTime = currTime - offsetSeconds;
+
+    const activeLine = lines.find(line => filePositionTime >= line.startTime && filePositionTime < line.endTime);
+    const activeLineId = activeLine ? activeLine.id : null;
+
+    useEffect(() => {
+        if (activeRef.current) {
+            activeRef.current.scrollIntoView({behavior: "smooth", block: "center"});
+        }
+    }, [activeLineId]);
+
+
+
+
 
     return (
         <div className="flex flex-col h-full w-full border">
 
             <div className="flex-1 overflow-y-auto">
                 {
-                    transcriptData.map((line, index) => {
-                        const isCurrLine = currTime >= line.start && currTime < line.end;
+                    lines.map((line) => {
+                        const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
 
                         return (
                             <div
-                            key={index}
-                            ref={isCurrLine ? scriptRef : null}
-                            onClick={() => setTime(line.start)}
-                            className={`transition-colors duration-200 ${
+                            key={line.id}
+                            ref={isCurrLine ? activeRef : null}
+                            onClick={() => setTime(line.startTime + offsetSeconds)}
+                            className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
                                 isCurrLine
-                                    ? "bg-blue-100 border-l-4 border-blue-500"
-                                    : "hover:bg-gray-50 text-gray-600"
+                                    ? "bg-blue-100 border-l-blue-500"
+                                    : "hover:bg-gray-50 text-gray-600 border-l-transparent"
                             }`}
                             >
 
-                                <span className="text-xs">{formatTime(line.start)}</span>
-                                <p className="text-xs">{line.text}</p>
+                                {/* Time Column */}
+                                <div className="shrink-0 py-2 border-r border-gray-400 flex justify-center"
+                                style={{width: '50px'}}>
+                                    <span className="text-xs">{formatTime(line.startTime)}</span>
+                                </div>
+
+                                {/* Line Contents Column */}
+                                <div className="flex-1 py-2 pl-3 pr-2">
+                                    <p className="text-xs">{line.text}</p>
+                                </div>
                             </div>
                         );
                     })
                 }
             </div>
-
         </div>
     )
 }

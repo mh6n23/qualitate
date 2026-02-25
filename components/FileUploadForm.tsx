@@ -108,7 +108,7 @@ export default function FileUploader({projectId}:{projectId:number})
             className="hidden"
             onChange={handleFileChange}
             multiple
-            accept="video/*, image/*, .vtt, .docx"/>
+            accept="video/*, image/*, .vtt, .docx, .txt"/>
 
             {uploading && (<div>
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

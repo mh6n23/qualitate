@@ -24,7 +24,13 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
             }
 
             const startTime = new Date(file.creationTime).getTime();
-            const duration = file.duration > 0 ? (file.duration * 1000) : 10000;
+            let duration = file.duration > 0 ? (file.duration * 1000) : 10000;
+
+            if (folder === "/Transcripts")
+            {
+                duration = 86400000;
+            }
+
             const endTime = startTime + duration;
 
             return playNeedle >= startTime && playNeedle <= endTime;
@@ -93,7 +99,8 @@ export default function PlaybackController({files, projectStartTime}: PlaybackCo
                         {currentTranscript ? currentTranscript.fileName : "Transcript Stream"}
                     </div>
                     <div className="bg-gray-50 flex flex-1 flex-col items-center justify-center rounded border border-gray-300 overflow-y-auto">
-                        <TranscriptPlayer/>
+                        {currentTranscript ? (<TranscriptPlayer key={currentTranscript.id} file={currentTranscript} projectStartTime={projectStartTime} />) :
+                            (<div className="text-gray-500">No Transcript Exists at this Timestamp</div>)}
                     </div>
                 </div>
             </div>

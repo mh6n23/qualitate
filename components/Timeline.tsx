@@ -18,8 +18,8 @@ function FileBlock({file, projectStartTime, pixelsPerSecond} : {file: MediaFile,
     const offsetSeconds = Math.max(0, (fileStartTime - projectStartTime) / 1000);
     const position = offsetSeconds * pixelsPerSecond;
 
-    // 20 is placeholder now for images
-    const shownDuration = file.duration > 0 ? file.duration : 10;
+    // 20 is placeholder now for images and transcripts
+    const shownDuration = file.duration > 0 ? file.duration : 20;
     const width = shownDuration * pixelsPerSecond;
 
     return (
