@@ -19,11 +19,6 @@ export default function FileUploader({projectId}:{projectId:number})
     const getDuration = (file: File): Promise<number> => {
         // Wait for the resolve to complete before returning a value
         return new Promise(resolve => {
-            // Set the duration to 0 if the file isn't a video
-            if (!file.type.startsWith("video/")) {
-                resolve(0);
-                return;
-            }
 
             // Create an invisible video and get the header information
             const video = document.createElement("video");
@@ -45,6 +40,46 @@ export default function FileUploader({projectId}:{projectId:number})
         })
     }
 
+    async function getTranscriptDuration(file: File): Promise<number> {
+        try{
+            const text = await file.text();
+            const regex = /\[([\d:]+)[ \-]+([\d:]+)]\s*([^\[]+)/g;
+            let acceptedLine;
+            let transcriptEnd = 0;
+
+            while ((acceptedLine = regex.exec(text)) !== null) {
+                const lineEnd = acceptedLine[2];
+                const endInSeconds = convertTimeToSeconds(lineEnd);
+
+                if (endInSeconds > transcriptEnd) {
+                    transcriptEnd = endInSeconds;
+                }
+
+            }
+            return transcriptEnd;
+        } catch (error)
+        {
+            console.error("Error parsing transcript to determine duration", error);
+            return 0;
+        }
+    }
+
+    function convertTimeToSeconds (timeString: string) : number {
+        const components = timeString.trim().split(':');
+        let seconds = 0;
+
+        // Convert differently depending on if hours are included in the time
+        if (components.length === 3)
+        {
+            seconds = (parseInt(components[0]) * 3600) + (parseInt(components[1]) * 60) + parseFloat(components[2]);
+        }
+        else if (components.length === 2)
+        {
+            seconds = (parseInt(components[0]) * 60) + parseFloat(components[1])
+        }
+        return seconds;
+    }
+
     async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>)
     {
         const files = event.target.files;
@@ -62,7 +97,19 @@ export default function FileUploader({projectId}:{projectId:number})
             setProgressText(`Uploading file ${file.name} (${i + 1} of ${files.length}`);
 
             try {
-                const duration = await getDuration(file);
+                let duration = 0;
+
+                if (file.type.startsWith("video/")) {
+                    // Video
+                    duration = await getDuration(file);
+                } else if (file.name.endsWith(".txt")) {
+                    // Transcript
+                    duration = await getTranscriptDuration(file);
+                } else {
+                    // Set default duration for image files
+                    duration = 30;
+                }
+
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("projectID", projectId.toString())

@@ -2,7 +2,7 @@
 
 import {useAtomValue, useSetAtom} from 'jotai';
 import {currTimeAtom} from "@/app/atoms";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {MediaFile} from '@prisma/client';
 
 interface Props {
@@ -19,7 +19,7 @@ interface Line {
 
 export default function TranscriptPlayer({file, projectStartTime}:Props) {
     const [lines, setLines] = useState<Line[]>([]);
-
+    const [searchTerm, setSearchTerm] = useState("");
     const currTime = useAtomValue(currTimeAtom);
     const setTime = useSetAtom(currTimeAtom);
     const activeRef = useRef<HTMLDivElement>(null);
@@ -116,11 +116,18 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
     const offsetSeconds = (fileStartTime - projectStartTime) / 1000;
     const filePositionTime = currTime - offsetSeconds;
 
+    // UseMemo only runs during renders which will be when the transcript is updated or search changes
+    const searchedLines = useMemo(() => {
+        if (!searchTerm.trim()) return lines; // Return as normal if nothing has been searched
+        return lines.filter(line => line.text.toLowerCase().includes(searchTerm.toLowerCase()))
+    }, [lines, searchTerm])
+
     const activeLine = lines.find(line => filePositionTime >= line.startTime && filePositionTime < line.endTime);
     const activeLineId = activeLine ? activeLine.id : null;
 
+    // Auto scrolling - Gets disabled if a term has been searched
     useEffect(() => {
-        if (activeRef.current) {
+        if (activeRef.current && searchTerm === "") {
             activeRef.current.scrollIntoView({behavior: "smooth", block: "center"});
         }
     }, [activeLineId]);
@@ -132,26 +139,35 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
     return (
         <div className="flex flex-col h-full w-full border">
 
+            <div className="p-2 border-b border-gray-300 shrink-0 bg-gray-50">
+                <input
+                type = "text"
+                placeholder = "Search the current transcript..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm border-gray-300 rounded"/>
+            </div>
+
             <div className="flex-1 overflow-y-auto">
-                {
-                    lines.map((line) => {
+                {searchedLines.length > 0 ? (
+                    searchedLines.map((line) => {
                         const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
 
                         return (
                             <div
-                            key={line.id}
-                            ref={isCurrLine ? activeRef : null}
-                            onClick={() => setTime(line.startTime + offsetSeconds)}
-                            className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
-                                isCurrLine
-                                    ? "bg-blue-100 border-l-blue-500"
-                                    : "hover:bg-gray-50 text-gray-600 border-l-transparent"
-                            }`}
+                                key={line.id}
+                                ref={isCurrLine ? activeRef : null}
+                                onClick={() => setTime(line.startTime + offsetSeconds)}
+                                className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
+                                    isCurrLine
+                                        ? "bg-blue-100 border-l-blue-500"
+                                        : "hover:bg-gray-50 text-gray-600 border-l-transparent"
+                                }`}
                             >
 
                                 {/* Time Column */}
                                 <div className="shrink-0 py-2 border-r border-gray-400 flex justify-center"
-                                style={{width: '50px'}}>
+                                     style={{width: '50px'}}>
                                     <span className="text-xs">{formatTime(line.startTime)}</span>
                                 </div>
 
@@ -160,9 +176,15 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
                                     <p className="text-xs">{line.text}</p>
                                 </div>
                             </div>
+
                         );
-                    })
-                }
+                        })
+                ) : (
+                    <div className="flex h-full items-center justify-center text-gray-500">No results found.</div>
+                )}
+
+
+
             </div>
         </div>
     )
