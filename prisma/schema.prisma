@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  url = env("postgresql://postgres:12March2006@localhost:5432/postgres")
 }
 
 datasource db {
@@ -14,21 +13,69 @@ datasource db {
 }
 
 model Project {
-    id      Int @id @default(autoincrement())
-    name String
-    description String?
-    folderPath String
-    creationTime DateTime @default(now())
-    files MediaFile[]
+    id           Int          @id @default(autoincrement())
+    name         String
+    description  String?
+    folderPath   String
+    creationTime DateTime     @default(now())
+    files        MediaFile[]
+    groups       Group[]
+    codes        Code[]
+    annotations  Annotation[]
+    themes       Theme[]
 }
 
 model MediaFile {
-    id Int @id @default(autoincrement())
-    fileName String
-    filePath String
-    fileType String
-    creationTime DateTime @default(now())
-    duration Float @default(0)
-    projectID Int
-    project Project @relation(fields: [projectID], references: [id])
+    id           Int          @id @default(autoincrement())
+    fileName     String
+    filePath     String
+    fileType     String
+    creationTime DateTime     @default(now())
+    duration     Float        @default(0)
+    projectID    Int
+    project      Project      @relation(fields: [projectID], references: [id])
+    groupId      Int?
+    group        Group?       @relation(fields: [groupId], references: [id])
+    annotations  Annotation[]
+}
+
+model Group {
+    id        Int         @id @default(autoincrement())
+    name      String
+    projectId Int
+    project   Project     @relation(fields: [projectId], references: [id])
+    files     MediaFile[]
+}
+
+model Code {
+    id          Int          @id @default(autoincrement())
+    name        String
+    colour      String       @default("#FFFF00")
+    projectId   Int
+    project     Project      @relation(fields: [projectId], references: [id])
+    annotations Annotation[]
+    themeId     Int?
+    theme       Theme?       @relation(fields: [themeId], references: [id])
+}
+
+model Annotation {
+    id             Int       @id @default(autoincrement())
+    codeId         Int
+    code           Code      @relation(fields: [codeId], references: [id])
+    projectId      Int
+    project        Project   @relation(fields: [projectId], references: [id])
+    fileId         Int
+    file           MediaFile @relation(fields: [fileId], references: [id])
+    transcriptText String
+    startTime      Float
+    endTime        Float
+    createdAt      DateTime  @default(now())
+}
+
+model Theme {
+    id        Int     @id @default(autoincrement())
+    name      String
+    projectId Int
+    project   Project @relation(fields: [projectId], references: [id])
+    codes     Code[]
 }
