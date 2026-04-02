@@ -19,7 +19,10 @@ model Project {
     description String?
     folderPath String
     creationTime DateTime @default(now())
+
     files MediaFile[]
+    codes Code[]
+    annotations Annotation[]
 }
 
 model MediaFile {
@@ -31,4 +34,45 @@ model MediaFile {
     duration Float @default(0)
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
+}
+
+model Code {
+    id Int @id @default(autoincrement())
+    name String
+    description String?
+    colour String
+    projectID Int
+    project Project @relation(fields: [projectID], references: [id])
+    annotations Annotation[]
+
+    @@unique([projectID, name])
+}
+
+model Annotation {
+    id Int @id @default(autoincrement())
+    projectID Int
+    codeID Int
+    startTime Float
+    endTime Float
+    transcriptFileID Int?
+    transcriptStartLine Int?
+    transcriptEndLine Int?
+    selectedText String?
+    creationTime DateTime @default(now())
+
+    project Project @relation(fields: [projectID], references: [id])
+    code Code  @relation(fields: [codeID], references: [id])
+    transcriptFile MediaFile? @relation(fields: [transcriptFileID], references: [id])
+    mediaLinks AnnotationMediaLink[]
+}
+
+model AnnotationMediaLink {
+    id Int @id @default(autoincrement())
+    annotationId Int
+    mediaFileID Int
+
+    annotation Annotation @relation(fields: [annotationId], references: [id])
+    mediaFile MediaFile @relation(fields: [mediaFileID], references: [id])
+
+    @@unique([annotationID, mediaFileID])
 }
