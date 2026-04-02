@@ -34,6 +34,9 @@ model MediaFile {
     duration Float @default(0)
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
+
+    transcriptAnnotations Annotation[] @relation("TranscriptSource")
+    annotationLinks AnnotationMediaLink[]
 }
 
 model Code {
@@ -42,6 +45,7 @@ model Code {
     description String?
     colour String
     projectID Int
+
     project Project @relation(fields: [projectID], references: [id])
     annotations Annotation[]
 
@@ -62,16 +66,16 @@ model Annotation {
 
     project Project @relation(fields: [projectID], references: [id])
     code Code  @relation(fields: [codeID], references: [id])
-    transcriptFile MediaFile? @relation(fields: [transcriptFileID], references: [id])
+    transcriptFile MediaFile? @relation("TranscriptSource", fields: [transcriptFileID], references: [id])
     mediaLinks AnnotationMediaLink[]
 }
 
 model AnnotationMediaLink {
     id Int @id @default(autoincrement())
-    annotationId Int
+    annotationID Int
     mediaFileID Int
 
-    annotation Annotation @relation(fields: [annotationId], references: [id])
+    annotation Annotation @relation(fields: [annotationID], references: [id])
     mediaFile MediaFile @relation(fields: [mediaFileID], references: [id])
 
     @@unique([annotationID, mediaFileID])
