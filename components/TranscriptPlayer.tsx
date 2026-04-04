@@ -8,7 +8,7 @@ import {MediaFile} from '@prisma/client';
 interface Props {
     file: MediaFile;
     projectStartTime: number;
-    onCreateAnnotation: (select: TranscriptAnnotationSelection) => void;
+    onSelectionChange: (selection: TranscriptAnnotationSelection | null) => void;
 }
 
 interface Line {
@@ -28,13 +28,13 @@ interface TranscriptAnnotationSelection {
 
 }
 
-export default function TranscriptPlayer({file, projectStartTime, onCreateAnnotation}: Props) {
+export default function TranscriptPlayer({file, projectStartTime, onSelectionChange}: Props) {
     const [lines, setLines] = useState<Line[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const currTime = useAtomValue(currTimeAtom);
     const setTime = useSetAtom(currTimeAtom);
     const activeRef = useRef<HTMLDivElement>(null);
-    const [annotationMode, setAnnotationMode] = useState<boolean>(false);
+    const [annotationMode, setAnnotationMode] = useState(false);
     const [selectionStartLine, setSelectionStartLine] = useState<number | null>(null);
     const [selectionEndLine, setSelectionEndLine] = useState<number | null>(null);
     const selectedRange = useMemo(() => {
@@ -43,13 +43,14 @@ export default function TranscriptPlayer({file, projectStartTime, onCreateAnnota
         }
 
         const startLine = Math.min(selectionStartLine, selectionEndLine);
-        const endLine = Math.min(selectionStartLine, selectionEndLine);
+        const endLine = Math.max(selectionStartLine, selectionEndLine);
         return lines.filter((line) => line.id >= startLine && line.id <= endLine);
-    }, [lines, selectionStartLine, selectionStartLine]);
+    }, [lines, selectionStartLine, selectionEndLine]);
+
+
 
     function handleLineClick(line: Line) {
-        if (!annotationMode)
-        {
+        if (!annotationMode) {
             setTime(line.startTime + offsetSeconds);
             return;
         }
@@ -70,7 +71,7 @@ export default function TranscriptPlayer({file, projectStartTime, onCreateAnnota
         const firstLine = selectedRange[0];
         const lastLine = selectedRange[selectedRange.length - 1];
 
-        onCreateAnnotation({
+        onSelectionChange({
             transcriptFileID: file.id,
             transcriptStartLine: firstLine.id,
             transcriptEndLine: lastLine.id,
@@ -165,6 +166,25 @@ export default function TranscriptPlayer({file, projectStartTime, onCreateAnnota
     const offsetSeconds = (fileStartTime - projectStartTime) / 1000;
     const filePositionTime = currTime - offsetSeconds;
 
+    useEffect(() => {
+        if (!annotationMode || selectedRange.length === 0) {
+            onSelectionChange(null);
+            return;
+        }
+
+        const firstLine = selectedRange[0];
+        const lastLine = selectedRange[selectedRange.length - 1];
+
+        onSelectionChange({
+            transcriptFileID: file.id,
+            transcriptStartLine: firstLine.id,
+            transcriptEndLine: lastLine.id,
+            startTime: firstLine.startTime + offsetSeconds,
+            endTime: lastLine.endTime + offsetSeconds,
+            selectedText: selectedRange.map((line) => line.text).join(" ")
+        });
+    }, [annotationMode, selectedRange, file.id, offsetSeconds, onSelectionChange]);
+
     // UseMemo only runs during renders which will be when the transcript is updated or search changes
     const searchedLines = useMemo(() => {
         if (!searchTerm.trim()) return lines; // Return as normal if nothing has been searched
@@ -186,18 +206,38 @@ export default function TranscriptPlayer({file, projectStartTime, onCreateAnnota
         <div className="flex flex-col h-full w-full border">
 
             <div className="p-2 border-b border-gray-300 shrink-0 bg-gray-50">
-                <input
-                    type="text"
-                    placeholder="Search the current transcript..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border-gray-300 rounded"/>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        placeholder="Search the current transcript..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border-gray-300 rounded"/>
+
+                    <button type="button" onClick={() => {
+                        setAnnotationMode((currentMode) => !currentMode);
+                        setSelectionStartLine(null)
+                        setSelectionEndLine(null)
+                        onSelectionChange(null)
+
+                    }} className={`px-3 py-1.5 rounded border text-sm font-medium ${
+                        annotationMode
+                            ? "bg-yellow-200 border-yellow-500 text-yellow-900"
+                            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                    }`}>{annotationMode ? "View Mode" : "Select Mode"}</button>
+                </div>
+
+
+
             </div>
 
             <div className="flex-1 overflow-y-auto">
                 {searchedLines.length > 0 ? (
                     searchedLines.map((line) => {
                         const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
+                        const isSelected = selectionStartLine !== null
+                        && selectionEndLine !== null &&
+                            line.id >= Math.min(selectionStartLine, selectionEndLine);
 
                         return (
                             <div
@@ -207,6 +247,8 @@ export default function TranscriptPlayer({file, projectStartTime, onCreateAnnota
                                 className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
                                     isCurrLine
                                         ? "bg-blue-100 border-l-blue-500"
+                                        : isSelected
+                                        ? "bg-yellow-100 border-l-yellow-500"
                                         : "hover:bg-gray-50 text-gray-600 border-l-transparent"
                                 }`}
                             >

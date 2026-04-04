@@ -52,9 +52,6 @@ export default async function ProjectPage({params}: PageProps)
                     <h1 className="text-4xl font-bold">Workspace</h1>
                 </div>
 
-                <div className = "flex justify-end">
-                    <button className="regular-button">+ Annotation</button>
-                </div>
 
             </div>
             <div className="text-center">

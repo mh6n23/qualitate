@@ -8,6 +8,7 @@ import TranscriptPlayer from '@/components/TranscriptPlayer';
 import Timeline from '@/components/Timeline';
 import PlaybackRemote from "@/components/PlaybackRemote";
 import {useEffect, useState} from "react";
+import {useRouter} from "next/navigation";
 
 interface PlaybackControllerProps {
     files: MediaFile[];
@@ -76,8 +77,14 @@ export default function PlaybackController({files, projectStartTime, projectId}:
         startTime: number;
         endTime: number;
         selectedText: string;
-    }) {
+    } | null) {
+
         setSelectedTranscriptAnnotation(selectedText);
+
+        if (selectedText === null) {
+            return;
+        }
+
         setAnnotationInProgress({
             codeID: null,
             note: "",
@@ -89,7 +96,6 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             selectedText: selectedText.selectedText,
             linkedMediaFileIDs: []
         });
-        setIsAnnotationModalOpen(true);
     }
 
 
@@ -137,8 +143,63 @@ export default function PlaybackController({files, projectStartTime, projectId}:
         projectDurationSecs = (projectEndTime - projectStartTime) / 1000;
     }
 
+    function handleOpenAnnotationModal() {
+        if (!selectedTranscriptAnnotation) {
+            alert("No transcript lines have been selected for an annotation.")
+            return;
+        }
+
+        setAnnotationInProgress({
+            codeID: null,
+            note: "",
+            startTime: selectedTranscriptAnnotation.startTime,
+            endTime: selectedTranscriptAnnotation.endTime,
+            transcriptFileID: selectedTranscriptAnnotation.transcriptFileID,
+            transcriptStartLine: selectedTranscriptAnnotation.transcriptStartLine,
+            transcriptEndLine: selectedTranscriptAnnotation.transcriptEndLine,
+            selectedText: selectedTranscriptAnnotation.selectedText,
+            linkedMediaFileIDs: getDefaultLinkedMediaFiles()
+        });
+
+        setIsAnnotationModalOpen(true);
+    }
+
+    function getDefaultLinkedMediaFiles() {
+        return files
+            .filter((file) => {
+                const fileStart = new Date(file.creationTime).getTime();
+
+                let fileDurationMs = 30000;
+                if (file.duration > 0) {
+                    fileDurationMs = file.duration * 1000;
+                }
+
+                if (file.filePath.includes("/Transcripts")) {
+                    fileDurationMs = 86400000;
+                }
+
+                const fileEnd = fileStart + fileDurationMs;
+                const absoluteCurrentTime = projectStartTime + currentTime * 1000;
+
+                return absoluteCurrentTime >= fileStart && absoluteCurrentTime <= fileEnd;
+            })
+            .map((file) => file.id);
+    }
+
+    useEffect(() => {
+        setSelectedTranscriptAnnotation(null);
+    }, [currentTranscript?.id]);
+
+    const router = useRouter();
+
+
+
     return (
         <div className="flex flex-col w-full mt-4">
+
+            <div className="flex justify-end mb-4">
+                <button className="regular-button" onClick={handleOpenAnnotationModal}>+ Annotation</button>
+            </div>
 
             {/* Divide page into 3 columns */}
             <div className="grid grid-cols-3 gap-4 h-100">
@@ -182,7 +243,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                         {currentTranscript ? (<TranscriptPlayer key={currentTranscript.id}
                                                                 file={currentTranscript}
                                                                 projectStartTime={projectStartTime}
-                                                                onCreateAnnotation={handleTranscriptSelection}/>) :
+                                                                onSelectionChange={handleTranscriptSelection}/>) :
                             (<div className="text-gray-500">No Transcript Exists at this Timestamp</div>)}
                     </div>
                 </div>
