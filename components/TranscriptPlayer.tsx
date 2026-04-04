@@ -8,6 +8,7 @@ import {MediaFile} from '@prisma/client';
 interface Props {
     file: MediaFile;
     projectStartTime: number;
+    onCreateAnnotation: (select: TranscriptAnnotationSelection) => void;
 }
 
 interface Line {
@@ -17,12 +18,71 @@ interface Line {
     text: string;
 }
 
-export default function TranscriptPlayer({file, projectStartTime}:Props) {
+interface TranscriptAnnotationSelection {
+    transcriptFileID: number;
+    transcriptStartLine: number;
+    transcriptEndLine: number;
+    startTime: number;
+    endTime: number;
+    selectedText: string;
+
+}
+
+export default function TranscriptPlayer({file, projectStartTime, onCreateAnnotation}: Props) {
     const [lines, setLines] = useState<Line[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const currTime = useAtomValue(currTimeAtom);
     const setTime = useSetAtom(currTimeAtom);
     const activeRef = useRef<HTMLDivElement>(null);
+    const [annotationMode, setAnnotationMode] = useState<boolean>(false);
+    const [selectionStartLine, setSelectionStartLine] = useState<number | null>(null);
+    const [selectionEndLine, setSelectionEndLine] = useState<number | null>(null);
+    const selectedRange = useMemo(() => {
+        if (selectionStartLine === null || selectionEndLine === null) {
+            return [];
+        }
+
+        const startLine = Math.min(selectionStartLine, selectionEndLine);
+        const endLine = Math.min(selectionStartLine, selectionEndLine);
+        return lines.filter((line) => line.id >= startLine && line.id <= endLine);
+    }, [lines, selectionStartLine, selectionStartLine]);
+
+    function handleLineClick(line: Line) {
+        if (!annotationMode)
+        {
+            setTime(line.startTime + offsetSeconds);
+            return;
+        }
+
+        if (selectionStartLine === null) {
+            setSelectionStartLine(line.id);
+            setSelectionEndLine(line.id);
+            return;
+        }
+        setSelectionEndLine(line.id);
+    }
+
+    function handleCreateAnnotation() {
+        if (selectedRange.length === 0) {
+            return;
+        }
+
+        const firstLine = selectedRange[0];
+        const lastLine = selectedRange[selectedRange.length - 1];
+
+        onCreateAnnotation({
+            transcriptFileID: file.id,
+            transcriptStartLine: firstLine.id,
+            transcriptEndLine: lastLine.id,
+            startTime: firstLine.startTime + offsetSeconds,
+            endTime: lastLine.endTime + offsetSeconds,
+            selectedText: selectedRange.map((line) => line.text).join(" ")
+        });
+
+        setAnnotationMode(false);
+        setSelectionStartLine(null)
+        setSelectionEndLine(null)
+    }
 
     function formatTime(totalSeconds: number) {
         const hours = Math.floor(totalSeconds / 3600);
@@ -31,17 +91,14 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
         return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    function convertTimeToSeconds (timeString: string) : number {
+    function convertTimeToSeconds(timeString: string): number {
         const components = timeString.trim().split(':');
         let seconds = 0;
 
         // Convert differently depending on if hours are included in the time
-        if (components.length === 3)
-        {
+        if (components.length === 3) {
             seconds = (parseInt(components[0]) * 3600) + (parseInt(components[1]) * 60) + parseFloat(components[2]);
-        }
-        else if (components.length === 2)
-        {
+        } else if (components.length === 2) {
             seconds = (parseInt(components[0]) * 60) + parseFloat(components[1])
         }
         return seconds;
@@ -53,14 +110,12 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
         let match;
         let index = 0;
 
-        while ((match = regex.exec(text)) !== null)
-        {
+        while ((match = regex.exec(text)) !== null) {
             const startTime = match[1];
             const endTime = match[2];
             const content = match[3].trim();
 
-            if (content)
-            {
+            if (content) {
                 lines.push(
                     {
                         id: index++,
@@ -74,42 +129,36 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
         return lines;
     }
 
+
     useEffect(() => {
-        if (!file)
-        {
+        if (!file) {
             return;
         }
 
         let fileActive = true;
 
         const getTranscript = async () => {
-            try
-            {
+            try {
                 const transcriptFile = await fetch(file.filePath);
                 const transcriptText = await transcriptFile.text();
                 const parsedLines = parseTranscript(transcriptText);
 
-                if (fileActive)
-                {
+                if (fileActive) {
                     setLines(parsedLines);
                 }
-            }
-            catch (error)
-            {
+            } catch (error) {
                 console.error("Couldn't load transcript" + file.fileName + ":" + error);
             }
         }
 
         getTranscript();
 
-        return() => {
+        return () => {
             fileActive = false;
         }
 
 
     }, [file]); // Run whenever the active transcript file changes
-
-
 
 
     const fileStartTime = new Date(file.creationTime).getTime();
@@ -133,19 +182,16 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
     }, [activeLineId]);
 
 
-
-
-
     return (
         <div className="flex flex-col h-full w-full border">
 
             <div className="p-2 border-b border-gray-300 shrink-0 bg-gray-50">
                 <input
-                type = "text"
-                placeholder = "Search the current transcript..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border-gray-300 rounded"/>
+                    type="text"
+                    placeholder="Search the current transcript..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border-gray-300 rounded"/>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -157,7 +203,7 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
                             <div
                                 key={line.id}
                                 ref={isCurrLine ? activeRef : null}
-                                onClick={() => setTime(line.startTime + offsetSeconds)}
+                                onClick={() => handleLineClick(line)}
                                 className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
                                     isCurrLine
                                         ? "bg-blue-100 border-l-blue-500"
@@ -178,11 +224,10 @@ export default function TranscriptPlayer({file, projectStartTime}:Props) {
                             </div>
 
                         );
-                        })
+                    })
                 ) : (
                     <div className="flex h-full items-center justify-center text-gray-500">No results found.</div>
                 )}
-
 
 
             </div>

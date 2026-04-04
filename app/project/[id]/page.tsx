@@ -63,7 +63,7 @@ export default async function ProjectPage({params}: PageProps)
             </div>
 
             {/* The 3 views and the timeline */}
-            <PlaybackController files={project.files} projectStartTime={startTime}/>
+            <PlaybackController files={project.files} projectStartTime={startTime} projectId={projectId}/>
 
         </main>
     );
