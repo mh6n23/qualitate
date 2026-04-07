@@ -236,8 +236,10 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
                     searchedLines.map((line) => {
                         const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
                         const isSelected = selectionStartLine !== null
-                        && selectionEndLine !== null &&
-                            line.id >= Math.min(selectionStartLine, selectionEndLine);
+                        && selectionEndLine !== null
+                            && line.id >= Math.min(selectionStartLine, selectionEndLine)
+                            && line.id <= Math.max(selectionStartLine, selectionEndLine);
+
 
                         return (
                             <div

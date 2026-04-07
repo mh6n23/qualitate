@@ -70,7 +70,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
         retreiveCodes();
     }, [projectId])
 
-    function handleTranscriptSelection(selectedText:  {
+    function handleTranscriptSelection(selectedText: {
         transcriptFileID: number;
         transcriptStartLine: number;
         transcriptEndLine: number;
@@ -97,7 +97,6 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             linkedMediaFileIDs: []
         });
     }
-
 
 
     const getCurrentFile = (folder: string) => {
@@ -186,12 +185,96 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             .map((file) => file.id);
     }
 
+    async function handleCodeCreation() {
+        if (!newCode.name.trim()) {
+            alert("You haven't entered a name for the code");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/codes`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newCode)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert("Problem occurred creating a new code: " + data.error)
+                return;
+            }
+
+            setCodes((previousCodes) => [...previousCodes, data]);
+            setAnnotationInProgress((previousAnnotation) => ({
+                ...previousAnnotation,
+                codeID: data.id
+            }))
+
+            setNewCode({
+                name: "",
+                description: "",
+                colour: '#ffffff'
+            })
+
+        } catch (error) {
+            console.error(error);
+            alert("Problem occurred creating a new code")
+        }
+    }
+
+    async function handleAnnotationCreation() {
+        if (annotationInProgress.codeID == null) {
+            alert("A code must be selected for an annotation to be created");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/annotations`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(annotationInProgress)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert("Problem occurred creating a new annotation: " + data.error)
+                return;
+            }
+
+            setIsAnnotationModalOpen(false);
+            setSelectedTranscriptAnnotation(null);
+
+            setAnnotationInProgress({
+                codeID: null,
+                note: "",
+                startTime: 0,
+                endTime: 0,
+                transcriptFileID: null,
+                transcriptStartLine: null,
+                transcriptEndLine: null,
+                selectedText: "",
+                linkedMediaFileIDs: []
+            });
+
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert("Problem occurred creating a new annotation");
+        }
+
+    }
+
     useEffect(() => {
         setSelectedTranscriptAnnotation(null);
     }, [currentTranscript?.id]);
 
     const router = useRouter();
-
 
 
     return (
@@ -200,6 +283,205 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             <div className="flex justify-end mb-4">
                 <button className="regular-button" onClick={handleOpenAnnotationModal}>+ Annotation</button>
             </div>
+
+            {isAnnotationModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content w-full max-w-2xl">
+                        {/* Top Row with title and exit button */}
+                        <div className="grid grid-cols-3 items-center border-b border-gray-300 pb-2 mb-4">
+                            {/* Empty first column */}
+                            <div></div>
+
+                            <h2 className="text-xl font-bold text-center flex-1">Create Annotation</h2>
+
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAnnotationModalOpen(false)}
+                                    className="w-7 h-7 px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                                >X
+                                </button>
+                            </div>
+                            {/* Close Annotation Window Button */}
+
+                        </div>
+
+                        {/* Main contents of the annotation window */}
+                        <div className="space-y-4">
+                            {/* Box showing the part of the transcript selected */}
+                            <div>
+                                <label className="block font-bold mb-1">Transcript Selection</label>
+                                <div
+                                    className="border border-gray-300 bg-gray-50 p-2 text-sm max-h-32 overflow-y-auto rounded">
+                                    {annotationInProgress.selectedText || "No text from the transcript was selected"}
+                                </div>
+                            </div>
+
+                            {/* The start and end times of the annotation shown */}
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block font-bold mb-1">Start Time</label>
+                                    <input
+                                        value={annotationInProgress.startTime}
+                                        readOnly
+                                        className="w-full border border-gray-300 rounded px-2 py-1 bg-gray-50"/>
+                                </div>
+
+                                <div className="flex-1">
+                                    <label className="block font-bold mb-1">End Time</label>
+                                    <input
+                                        value={annotationInProgress.endTime}
+                                        readOnly
+                                        className="w-full border border-gray-300 rounded px-2 py-1 bg-gray-50"/>
+                                </div>
+                            </div>
+
+                            {/* Code selection */}
+                            <div className="border-t border-gray-300 pt-3">
+                                <h3 className="font-bold mb-3">Code Selection</h3>
+
+                                <div className="grid grid-cols-2 gap-6 items-start">
+                                    <div>
+                                        <h4 className="font-semibold mb-2">Select Existing Code</h4>
+
+                                        <label className="block font-bold mb-1">Code</label>
+
+                                        <select
+                                            value={annotationInProgress.codeID ?? ""}
+                                            onChange={(e) =>
+                                                setAnnotationInProgress((previousAnnotation) => ({
+                                                    ...previousAnnotation,
+                                                    codeID: e.target.value ? parseInt(e.target.value) : null
+                                                }))
+                                            }
+                                            className="w-full border border-gray-300 rounded px-2 py-1 bg-white"
+                                        >
+                                            <option value="">Select a code</option>
+                                            {codes.map((code) => (
+                                                <option key={code.id} value={code.id}>
+                                                    {code.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold mb-2">Create New Code</h4>
+
+                                        <div className="mb-2">
+                                            <label className="block font-bold mb-1">Name</label>
+                                            <input
+                                            value={newCode.name}
+                                            onChange={(e) =>
+                                            setNewCode((previousCode) => ({
+                                                ...previousCode,
+                                                name: e.target.value
+                                            }))}
+                                            className="w-full border border-gray-300 rounded px-2 py-1"
+                                            />
+                                        </div>
+
+                                        <div className="mb-2">
+                                            <label className="block font-bold mb-1">Description</label>
+                                            <input
+                                                value={newCode.description}
+                                                onChange={(e) =>
+                                                    setNewCode((previousCode) => ({
+                                                        ...previousCode,
+                                                        description: e.target.value
+                                                    }))}
+                                                className="w-full border border-gray-300 rounded px-2 py-1"
+                                            />
+                                        </div>
+
+                                        <div className="mb-2">
+                                            <label className="block font-bold mb-1">Colour</label>
+                                            <input
+                                                type="color"
+                                                value={newCode.colour}
+                                                onChange={(e) =>
+                                                    setNewCode((previousCode) => ({
+                                                        ...previousCode,
+                                                        colour: e.target.value
+                                                    }))}
+                                                className="w-20 h-10 border border-gray-300 rounded bg-white"
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-center">
+                                            <button
+                                                type="button"
+                                                className="regular-button"
+                                                onClick={handleCodeCreation}>
+                                                Save Code
+                                            </button>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-300 pt-3">
+                                <h3 className="block font-bold mb-3">Linked Files</h3>
+                                <div className="border border-gray-300 rounded p-2 max-h-40 overflow-y-auto space-y-2">
+                                    {files.map((file) => {
+                                        const checked = annotationInProgress.linkedMediaFileIDs.includes(file.id);
+
+                                        return (
+                                            <label key={file.id} className="flex items-center gap-2">
+                                                <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setAnnotationInProgress((previousAnnotation) => ({
+                                                            ...previousAnnotation,
+                                                            linkedMediaFileIDs: [
+                                                                ...previousAnnotation.linkedMediaFileIDs,
+                                                                file.id
+                                                            ]
+                                                        }));
+                                                    }
+                                                    else
+                                                    {
+                                                        setAnnotationInProgress((previousAnnotation) => ({
+                                                            ...previousAnnotation,
+                                                            linkedMediaFileIDs: [
+                                                                ...previousAnnotation.linkedMediaFileIDs.filter((id) => id !== file.id)
+                                                            ]
+                                                        }));
+                                                    }
+                                                }}
+                                                className="w-4 h-4"/>
+                                                <span className="text-sm">{file.fileName}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center pt-3">
+                                <button
+                                    type="button"
+                                    className="regular-button"
+                                    onClick={handleAnnotationCreation}>
+                                    Save Annotation
+                                </button>
+                            </div>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+                    </div>
+                </div>
+            )}
 
             {/* Divide page into 3 columns */}
             <div className="grid grid-cols-3 gap-4 h-100">
