@@ -80,6 +80,24 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
         )
     }
 
+    let transcriptFile = null;
+
+    if (body.transcriptFile != null) {
+        transcriptFile = await prisma.mediaFile.findFirst({
+            where: {
+                id: body.transcriptFileID,
+                projectID
+            }
+        });
+
+        if (!transcriptFile) {
+            return NextResponse.json(
+                {error: "The transcript file being annotated couldn't be found"},
+                {status: 400}
+            )
+        }
+    }
+
     const annotation = await prisma.annotation.create({
         data: {
             projectID,

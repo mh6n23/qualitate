@@ -7,9 +7,11 @@ export default function FileUploader({projectId}:{projectId:number})
 {
     const [uploading, setUploading] = useState(false);
     const [currentFileName, setCurrentFileName] = useState("");
-    const [progressText, setProgressText] = useState("");
+    const [totalFiles, setTotalFiles] = useState(0);
+    const [currentFileIndex, setCurrentFileIndex] = useState(0);
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const progressPercentage = totalFiles > 0 ? (currentFileIndex / totalFiles) * 100 : 0;
 
     const handleButtonClick = () => {
         fileInputRef.current?.click();
@@ -88,13 +90,15 @@ export default function FileUploader({projectId}:{projectId:number})
             return;
         }
 
+        setTotalFiles(files.length);
+        setCurrentFileIndex(0);
         setUploading(true);
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const timestamp = new Date(file.lastModified).toISOString();
+            setCurrentFileIndex(i+1);
             setCurrentFileName(file.name);
-            setProgressText(`Uploading file ${file.name} (${i + 1} of ${files.length}`);
 
             try {
                 let duration = 0;
@@ -125,8 +129,8 @@ export default function FileUploader({projectId}:{projectId:number})
                     throw new Error(`File upload failed for ${file.name}.`);
                 }
 
-                // Remove to speedup
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Remove to speedup upload process
+                await new Promise(resolve => setTimeout(resolve, 5000));
             } catch (error) {
                 console.error(error);
                 alert(`File Upload Error for ${file.name}`);
@@ -134,6 +138,9 @@ export default function FileUploader({projectId}:{projectId:number})
         }
 
         setUploading(false);
+        setCurrentFileName("");
+        setCurrentFileIndex(0);
+        setTotalFiles(0);
         router.refresh();
 
         if (event.target)
@@ -157,20 +164,42 @@ export default function FileUploader({projectId}:{projectId:number})
             multiple
             accept="video/*, image/*, .vtt, .docx, .txt"/>
 
-            {uploading && (<div>
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-96">
-                        <h3>Uploading...</h3>
-                        <span>{progressText}</span>
+            {uploading && (
+
+                <div className="modal-overlay">
+                    <div className="modal-content max-w-wd">
+                        <div className="space-y-4">
+                            {/* Popup Title */}
+                            <div className="text-center">
+                                <h2 className="text-xl font-bold">Uploading Files</h2>
+                            </div>
+
+                            {/* Current file info and progress text */}
+                            <div>
+                                <p className="text-sm font-semibold text-gray-800 truncate">{currentFileName}</p>
+                                <p className="text-sm font-semibold text-gray-600">File {currentFileIndex} of {totalFiles}</p>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div>
+                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                    <div
+                                        className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                                        style={{width: `${progressPercentage}%`}}
+                                    />
+                                </div>
+                            </div>
+
+
+                        </div>
                     </div>
 
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div className="bg-blue-600 h-2 rounded-full w-full animate-pulse"></div>
-
-                    </div>
 
                 </div>
-            </div>)}
+
+
+
+            )}
         </>
     )
 }

@@ -79,11 +79,14 @@ export default function PlaybackController({files, projectStartTime, projectId}:
         selectedText: string;
     } | null) {
 
-        setSelectedTranscriptAnnotation(selectedText);
-
         if (selectedText === null) {
+            if (!isAnnotationModalOpen) {
+                setSelectedTranscriptAnnotation(null);
+            }
             return;
         }
+
+        setSelectedTranscriptAnnotation(selectedText);
 
         setAnnotationInProgress({
             codeID: null,
@@ -96,6 +99,11 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             selectedText: selectedText.selectedText,
             linkedMediaFileIDs: []
         });
+    }
+
+    function closeAnnotationModal() {
+        setIsAnnotationModalOpen(false);
+        setSelectedTranscriptAnnotation(null);
     }
 
 
@@ -247,7 +255,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                 return;
             }
 
-            setIsAnnotationModalOpen(false);
+            closeAnnotationModal();
             setSelectedTranscriptAnnotation(null);
 
             setAnnotationInProgress({
@@ -297,7 +305,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                             <div className="flex justify-end">
                                 <button
                                     type="button"
-                                    onClick={() => setIsAnnotationModalOpen(false)}
+                                    onClick={() => closeAnnotationModal()}
                                     className="w-7 h-7 px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
                                 >X
                                 </button>
@@ -424,7 +432,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                             <div className="border-t border-gray-300 pt-3">
                                 <h3 className="block font-bold mb-3">Linked Files</h3>
                                 <div className="border border-gray-300 rounded p-2 max-h-40 overflow-y-auto space-y-2">
-                                    {files.map((file) => {
+                                    {files.filter((file) => file.id !== annotationInProgress.transcriptFileID).map((file) => {
                                         const checked = annotationInProgress.linkedMediaFileIDs.includes(file.id);
 
                                         return (

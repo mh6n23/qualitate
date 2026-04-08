@@ -63,28 +63,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         setSelectionEndLine(line.id);
     }
 
-    function handleCreateAnnotation() {
-        if (selectedRange.length === 0) {
-            return;
-        }
-
-        const firstLine = selectedRange[0];
-        const lastLine = selectedRange[selectedRange.length - 1];
-
-        onSelectionChange({
-            transcriptFileID: file.id,
-            transcriptStartLine: firstLine.id,
-            transcriptEndLine: lastLine.id,
-            startTime: firstLine.startTime + offsetSeconds,
-            endTime: lastLine.endTime + offsetSeconds,
-            selectedText: selectedRange.map((line) => line.text).join(" ")
-        });
-
-        setAnnotationMode(false);
-        setSelectionStartLine(null)
-        setSelectionEndLine(null)
-    }
-
     function formatTime(totalSeconds: number) {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
