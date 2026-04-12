@@ -56,7 +56,7 @@ export default function VideoPlayer({file, projectStartTime}: Props) {
         <video
             ref={videoRef}
             src={file.filePath}
-            className="w-full h-auto"
+            className="w-full h-full object-contain"
         />
     );
 

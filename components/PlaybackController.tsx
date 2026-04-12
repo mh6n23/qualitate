@@ -492,15 +492,15 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             )}
 
             {/* Divide page into 3 columns */}
-            <div className="grid grid-cols-3 gap-4 h-100">
+            <div className="grid grid-cols-3 gap-4 h-[52vh] min-h-[360px]">
 
                 {/* Video Player */}
-                <div className="flex flex-col gap-2 h-full">
+                <div className="flex flex-col gap-2 h-full min-h-0">
                     <div className="text-sm font-semibold text-gray-600 text-center truncate px-2">
                         {currentVideo ? currentVideo.fileName : "Video Stream"}
                     </div>
                     <div
-                        className="bg-black flex flex-1 flex-col items-center justify-center rounded border border-gray-700 relative overflow-hidden">
+                        className="bg-black flex flex-1 min-h-0 flex-col items-center justify-center rounded border border-gray-700 relative overflow-hidden">
                         {currentVideo ?
                             (<VideoPlayer key={currentVideo.id} file={currentVideo}
                                           projectStartTime={projectStartTime}/>)
@@ -510,12 +510,12 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                 </div>
 
                 {/* Image Viewer */}
-                <div className="flex flex-col gap-2 h-full">
+                <div className="flex flex-col gap-2 h-full min-h-0">
                     <div className="text-sm font-semibold text-gray-600 text-center truncate px-2">
                         {currentImage ? currentImage.fileName : "Image Stream"}
                     </div>
                     <div
-                        className="bg-gray-200 flex flex-1 flex-col items-center justify-center rounded border border-gray-400 relative overflow-hidden p-2">
+                        className="bg-gray-200 flex flex-1 min-h-0 flex-col items-center justify-center rounded border border-gray-400 relative overflow-hidden p-2">
                         {currentImage ? (
                                 <img src={currentImage.filePath} className="max-w-full max-h-full object-contain"/>)
                             : (<div className="text-gray-500">No Image Exists at this Timestamp</div>)
@@ -524,12 +524,12 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                 </div>
 
                 {/* Transcript Viewer */}
-                <div className="flex flex-col gap-2 h-full">
+                <div className="flex flex-col gap-2 h-full min-h-0">
                     <div className="text-sm font-semibold text-gray-600 text-center truncate px-2">
                         {currentTranscript ? currentTranscript.fileName : "Transcript Stream"}
                     </div>
                     <div
-                        className="bg-gray-50 flex flex-1 flex-col items-center justify-center rounded border border-gray-300 overflow-y-auto">
+                        className="bg-gray-50 flex flex-1 min-h-0 flex-col items-center justify-center rounded border border-gray-300 overflow-y-auto">
                         {currentTranscript ? (<TranscriptPlayer key={currentTranscript.id}
                                                                 file={currentTranscript}
                                                                 projectStartTime={projectStartTime}
