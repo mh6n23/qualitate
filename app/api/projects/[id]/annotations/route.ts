@@ -82,7 +82,7 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
 
     let transcriptFile = null;
 
-    if (body.transcriptFile != null) {
+    if (body.transcriptFileID != null) {
         transcriptFile = await prisma.mediaFile.findFirst({
             where: {
                 id: body.transcriptFileID,

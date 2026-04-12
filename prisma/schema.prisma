@@ -23,6 +23,7 @@ model Project {
     files MediaFile[]
     codes Code[]
     annotations Annotation[]
+    themes Theme[]
 }
 
 model MediaFile {
@@ -39,6 +40,28 @@ model MediaFile {
     annotationLinks AnnotationMediaLink[]
 }
 
+model Theme {
+    id Int @id @default(autoincrement())
+    name String
+    description String?
+    projectID Int
+
+    project Project @relation(fields: [projectID], references: [id])
+    codeLinks ThemeCode[]
+
+    @@unique([projectID, name])
+}
+
+model ThemeCode {
+    id Int @id @default(autoincrement())
+    themeID Int
+    codeID Int
+    theme Theme @relation(fields: [themeID], references: [id])
+    code Code @relation(fields: [codeID], references: [id])
+
+    @@unique([themeID, codeID])
+}
+
 model Code {
     id Int @id @default(autoincrement())
     name String
@@ -48,6 +71,7 @@ model Code {
 
     project Project @relation(fields: [projectID], references: [id])
     annotations Annotation[]
+    themeLinks ThemeCode[]
 
     @@unique([projectID, name])
 }

@@ -7,7 +7,7 @@ import VideoPlayer from '@/components/VideoPlayer';
 import TranscriptPlayer from '@/components/TranscriptPlayer';
 import Timeline from '@/components/Timeline';
 import PlaybackRemote from "@/components/PlaybackRemote";
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 
 interface PlaybackControllerProps {
@@ -70,14 +70,14 @@ export default function PlaybackController({files, projectStartTime, projectId}:
         retreiveCodes();
     }, [projectId])
 
-    function handleTranscriptSelection(selectedText: {
+    const handleTranscriptSelection = useCallback((selectedText: {
         transcriptFileID: number;
         transcriptStartLine: number;
         transcriptEndLine: number;
         startTime: number;
         endTime: number;
         selectedText: string;
-    } | null) {
+    } | null) => {
 
         if (selectedText === null) {
             if (!isAnnotationModalOpen) {
@@ -99,7 +99,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             selectedText: selectedText.selectedText,
             linkedMediaFileIDs: []
         });
-    }
+    }, [isAnnotationModalOpen]);
 
     function closeAnnotationModal() {
         setIsAnnotationModalOpen(false);

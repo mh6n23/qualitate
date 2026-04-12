@@ -25,7 +25,8 @@ interface TranscriptAnnotationSelection {
     startTime: number;
     endTime: number;
     selectedText: string;
-
+    startOffset?: number;
+    endOffset?: number;
 }
 
 export default function TranscriptPlayer({file, projectStartTime, onSelectionChange}: Props) {
@@ -35,32 +36,96 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
     const setTime = useSetAtom(currTimeAtom);
     const activeRef = useRef<HTMLDivElement>(null);
     const [annotationMode, setAnnotationMode] = useState(false);
-    const [selectionStartLine, setSelectionStartLine] = useState<number | null>(null);
-    const [selectionEndLine, setSelectionEndLine] = useState<number | null>(null);
-    const selectedRange = useMemo(() => {
-        if (selectionStartLine === null || selectionEndLine === null) {
-            return [];
+    const [selectedAnnotationRange, setSelectedAnnotationRange] = useState<TranscriptAnnotationSelection | null>(null);
+
+
+    function getLine(node: Node | null): HTMLElement | null {
+        if (!node) {
+            return null;
         }
 
-        const startLine = Math.min(selectionStartLine, selectionEndLine);
-        const endLine = Math.max(selectionStartLine, selectionEndLine);
-        return lines.filter((line) => line.id >= startLine && line.id <= endLine);
-    }, [lines, selectionStartLine, selectionEndLine]);
+        let current: HTMLElement | null = node instanceof HTMLElement ? node : node.parentElement;
 
+        while (current) {
+            if (current.dataset.lineId) {
+                return current;
+            }
+            current = current.parentElement;
+        }
 
+        return null;
+    }
+
+    function handleTextSelection() {
+        if (!annotationMode) {
+            return;
+        }
+
+        const selection = window.getSelection();
+
+        if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+            setSelectedAnnotationRange(null);
+            onSelectionChange(null);
+            return;
+        }
+
+        const selectedText = selection.toString().trim();
+
+        if (!selectedText) {
+            setSelectedAnnotationRange(null);
+            onSelectionChange(null);
+            return;
+        }
+
+        const anchor = getLine(selection.anchorNode);
+        const focus = getLine(selection.focusNode);
+
+        if (!anchor || !focus) {
+            setSelectedAnnotationRange(null);
+            onSelectionChange(null);
+            return;
+        }
+
+        const anchorID = parseInt(anchor.dataset.lineId || "");
+        const focusID = parseInt(focus.dataset.lineId || "");
+
+        if (Number.isNaN(anchorID) || Number.isNaN(focusID)) {
+            setSelectedAnnotationRange(null);
+            onSelectionChange(null);
+            return;
+        }
+
+        const startID = Math.min(anchorID, focusID);
+        const endID = Math.max(anchorID, focusID);
+
+        const start = lines.find((line) => line.id === startID);
+        const end = lines.find((line) => line.id === endID);
+
+        if (!start || !end) {
+            setSelectedAnnotationRange(null);
+            onSelectionChange(null);
+            return;
+        }
+
+        const nextSelection: TranscriptAnnotationSelection = {
+            transcriptFileID: file.id,
+            transcriptStartLine: start.id,
+            transcriptEndLine: end.id,
+            startTime: start.startTime + offsetSeconds,
+            endTime: end.endTime + offsetSeconds,
+            selectedText,
+            startOffset: selection.anchorOffset,
+            endOffset: selection.focusOffset
+        };
+
+        setSelectedAnnotationRange(nextSelection);
+        onSelectionChange(nextSelection);
+    }
 
     function handleLineClick(line: Line) {
         if (!annotationMode) {
             setTime(line.startTime + offsetSeconds);
-            return;
         }
-
-        if (selectionStartLine === null) {
-            setSelectionStartLine(line.id);
-            setSelectionEndLine(line.id);
-            return;
-        }
-        setSelectionEndLine(line.id);
     }
 
     function formatTime(totalSeconds: number) {
@@ -144,24 +209,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
     const offsetSeconds = (fileStartTime - projectStartTime) / 1000;
     const filePositionTime = currTime - offsetSeconds;
 
-    useEffect(() => {
-        if (!annotationMode || selectedRange.length === 0) {
-            onSelectionChange(null);
-            return;
-        }
-
-        const firstLine = selectedRange[0];
-        const lastLine = selectedRange[selectedRange.length - 1];
-
-        onSelectionChange({
-            transcriptFileID: file.id,
-            transcriptStartLine: firstLine.id,
-            transcriptEndLine: lastLine.id,
-            startTime: firstLine.startTime + offsetSeconds,
-            endTime: lastLine.endTime + offsetSeconds,
-            selectedText: selectedRange.map((line) => line.text).join(" ")
-        });
-    }, [annotationMode, selectedRange, file.id, offsetSeconds, onSelectionChange]);
 
     // UseMemo only runs during renders which will be when the transcript is updated or search changes
     const searchedLines = useMemo(() => {
@@ -194,9 +241,10 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
 
                     <button type="button" onClick={() => {
                         setAnnotationMode((currentMode) => !currentMode);
-                        setSelectionStartLine(null)
-                        setSelectionEndLine(null)
-                        onSelectionChange(null)
+                        setSelectedAnnotationRange(null);
+                        onSelectionChange(null);
+                        const selection = window.getSelection();
+                        selection?.removeAllRanges();
 
                     }} className={`px-3 py-1.5 rounded border text-sm font-medium ${
                         annotationMode
@@ -209,32 +257,31 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
 
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto"
+                onMouseUp={handleTextSelection}>
                 {searchedLines.length > 0 ? (
                     searchedLines.map((line) => {
                         const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
-                        const isSelected = selectionStartLine !== null
-                        && selectionEndLine !== null
-                            && line.id >= Math.min(selectionStartLine, selectionEndLine)
-                            && line.id <= Math.max(selectionStartLine, selectionEndLine);
+
 
 
                         return (
                             <div
                                 key={line.id}
+                                data-line-id={line.id}
+                                data-line-start={line.startTime}
+                                data-line-end={line.endTime}
                                 ref={isCurrLine ? activeRef : null}
                                 onClick={() => handleLineClick(line)}
                                 className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
                                     isCurrLine
                                         ? "bg-blue-100 border-l-blue-500"
-                                        : isSelected
-                                        ? "bg-yellow-100 border-l-yellow-500"
                                         : "hover:bg-gray-50 text-gray-600 border-l-transparent"
                                 }`}
                             >
 
                                 {/* Time Column */}
-                                <div className="shrink-0 py-2 border-r border-gray-400 flex justify-center"
+                                <div className="shrink-0 py-2 border-r border-gray-400 flex justify-center select-none"
                                      style={{width: '50px'}}>
                                     <span className="text-xs">{formatTime(line.startTime)}</span>
                                 </div>
