@@ -82,7 +82,7 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
     }
 
     async function saveTimestamp(file: MediaFile) {
-        const edit = rowEdits[fileId];
+        const edit = rowEdits[file.id];
 
         if (!edit?.date) {
             alert("No date was provided.");
