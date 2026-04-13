@@ -6,6 +6,8 @@ import FileUploader from "@/components/FileUploadForm";
 import FileViewer from "@/components/FileViewer";
 import Timeline from "@/components/Timeline";
 import PlaybackController from "@/components/PlaybackController";
+import Themes from '@/components/Themes';
+
 
 interface PageProps
 {
@@ -50,6 +52,10 @@ export default async function ProjectPage({params}: PageProps)
 
                 <div className="text-center">
                     <h1 className="text-4xl font-bold">Workspace</h1>
+                </div>
+
+                <div className="flex justify-end">
+                    <Themes projectID={projectId}/>
                 </div>
 
 

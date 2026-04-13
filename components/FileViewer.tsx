@@ -5,7 +5,7 @@ import {MediaFile} from '@prisma/client';
 import {useRouter} from 'next/navigation';
 
 function buildRowEdits(files: MediaFile[]) {
-    const edits: Record<number, { date: string; time: string }> = {};
+    const edits: Record<number, { date: string; time: string; duration: string }> = {};
 
     for (const file of files) {
         const date = new Date(file.creationTime);
@@ -20,6 +20,7 @@ function buildRowEdits(files: MediaFile[]) {
         edits[file.id] = {
             date: `${year}-${month}-${day}`,
             time: `${hour}:${minutes}:${seconds}`,
+            duration: String(file.duration > 0 ? file.duration : 30),
         };
     }
 
@@ -28,7 +29,7 @@ function buildRowEdits(files: MediaFile[]) {
 
 export default function FileViewer({files}: { files: MediaFile[] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [rowEdits, setRowEdits] = useState<Record<number, { date: string; time: string }>>(
+    const [rowEdits, setRowEdits] = useState<Record<number, { date: string; time: string; duration: string }>>(
         () => buildRowEdits(files)
     );
     const router = useRouter();
@@ -69,7 +70,7 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
         return `${minutes}:${seconds.toString().padStart(2, "0")}`;
     }
 
-    function updateRowEdit(fileId: number, field: "date" | "time", value: string) {
+    function updateRowEdit(fileId: number, field: "date" | "time" | "duration", value: string) {
         setRowEdits((prev) => ({
             ...prev,
             [fileId]: {
@@ -80,7 +81,7 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
 
     }
 
-    async function saveTimestamp(fileId: number) {
+    async function saveTimestamp(file: MediaFile) {
         const edit = rowEdits[fileId];
 
         if (!edit?.date) {
@@ -91,17 +92,32 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
             return;
         }
 
-        const stampString = new Date(`${edit.date}T${edit.time}`).toISOString();
+        const body: {
+            creationTime: string;
+            duration?: number;
+        } = {
+            creationTime: new Date(`${edit.date}T${edit.time}`).toISOString()
+        };
+
+        if (file.filePath.includes("/Images")) {
+            const parsedDuration = Number(edit.duration);
+
+            if (Number.isNaN(parsedDuration) || parsedDuration < 0) {
+                alert("Invalid duration provided.");
+                return;
+            }
+
+            body.duration = parsedDuration;
+        }
+
 
         try {
-            const response = await fetch(`/api/files/${fileId}`, {
+            const response = await fetch(`/api/files/${file.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    creationTime: stampString
-                })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
@@ -220,9 +236,9 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
 function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, onDeleteFile, formatDuration}: {
     title: string,
     files: MediaFile[],
-    rowEdits: Record<number, { date: string; time: string }>;
-    onEditChange: (fileId: number, field: "date" | "time", value: string) => void;
-    onSaveTimestamp: (fileId: number) => void;
+    rowEdits: Record<number, { date: string; time: string; duration: string }>;
+    onEditChange: (fileId: number, field: "date" | "time" | "duration", value: string) => void;
+    onSaveTimestamp: (file: MediaFile) => void;
     onDeleteFile: (fileId: number, fileName: string) => void;
     formatDuration: (seconds: number) => string
 }) {
@@ -275,13 +291,23 @@ function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, on
                         </div>
 
                         <div>
-                            {file.duration > 0 ? formatDuration(file.duration) : "-"}
+                            {file.filePath.includes("/Images") ? (
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={rowEdits[file.id]?.duration ?? ""}
+                                    onChange={(e) => onEditChange(file.id, "duration", e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-2 py-1"/>
+                            ) : (
+                                file.duration > 0 ? formatDuration(file.duration) : "-"
+                            )}
                         </div>
 
                         <div className="flex justify-center">
                             <button
                                 type="button"
-                                onClick={() => onSaveTimestamp(file.id)}
+                                onClick={() => onSaveTimestamp(file)}
                                 className="px-2 py-1 border border-blue-300 text-blue-700 rounded hover:bg-blue-50 text-xs font-semibold"
                             >
                                 Save

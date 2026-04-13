@@ -63,18 +63,10 @@ export async function PATCH(
     const {id} = await context.params;
     const fileID = parseInt(id);
     const body = await req.json();
-    const newTime = new Date(body.creationTime);
 
     if (Number.isNaN(fileID)) {
         return NextResponse.json(
             {error: "File ID wasn't a number"},
-            {status: 400}
-        );
-    }
-
-    if (!body.creationTime) {
-        return NextResponse.json(
-            {error: "No creation time for patch"},
             {status: 400}
         );
     }
@@ -90,14 +82,48 @@ export async function PATCH(
         );
     }
 
+    const updateData: {
+        creationTime?: Date;
+        duration?: number;
+    } = {};
+
+    if (body.createTime != null) {
+        const newTime = new Date(body.creationTime);
+
+        if (Number.isNaN(newTime.getTime())) {
+            return NextResponse.json(
+                {error: "Creation time invalid"},
+                {status: 400}
+            );
+        }
+
+        updateData.creationTime = newTime;
+    }
+
+    if (body.duration != null) {
+        const parsedDuration = Number(body.duration);
+
+        if (Number.isNaN(parsedDuration) || parsedDuration < 0) {
+            return NextResponse.json(
+                {error: "Duration invalid"},
+                {status: 400}
+            );
+        }
+
+        updateData.duration = parsedDuration;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+        return NextResponse.json(
+            {error: "No updates were provided for file"},
+            {status: 400}
+        );
+    }
+
     const updatedFile = await prisma.mediaFile.update({
         where: {id: fileID},
-        data: {
-            creationTime: newTime
-        }
+        data: updateData
     });
 
     return NextResponse.json(updatedFile);
-
-
 }
