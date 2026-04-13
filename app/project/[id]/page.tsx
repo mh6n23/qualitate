@@ -26,7 +26,12 @@ export default async function ProjectPage({params}: PageProps)
             files: true,
             annotations: {
                 include: {
-                    code: true
+                    code: true,
+                    mediaLinks: {
+                        include: {
+                            mediaFile: true
+                        }
+                    }
                 },
                 orderBy: {
                     startTime: "asc"
