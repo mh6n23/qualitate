@@ -86,6 +86,8 @@ model Annotation {
     transcriptStartLine Int?
     transcriptEndLine Int?
     selectedText String?
+    transcriptStartOffset Int?
+    transcriptEndOffset Int?
     creationTime DateTime @default(now())
 
     project Project @relation(fields: [projectID], references: [id])

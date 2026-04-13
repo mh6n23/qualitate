@@ -3,12 +3,15 @@
 import {useAtomValue, useSetAtom} from 'jotai';
 import {currTimeAtom} from "@/app/atoms";
 import {useEffect, useMemo, useRef, useState} from "react";
-import {MediaFile} from '@prisma/client';
+import {Annotation, Code, MediaFile} from '@prisma/client';
 
 interface Props {
     file: MediaFile;
     projectStartTime: number;
     onSelectionChange: (selection: TranscriptAnnotationSelection | null) => void;
+    annotations: (Annotation & {
+        code: Code;
+    })[];
 }
 
 interface Line {
@@ -25,18 +28,20 @@ interface TranscriptAnnotationSelection {
     startTime: number;
     endTime: number;
     selectedText: string;
-    startOffset?: number;
-    endOffset?: number;
+    startOffset: number;
+    endOffset: number;
 }
 
-export default function TranscriptPlayer({file, projectStartTime, onSelectionChange}: Props) {
+export default function TranscriptPlayer({file, projectStartTime, onSelectionChange, annotations}: Props) {
     const [lines, setLines] = useState<Line[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const currTime = useAtomValue(currTimeAtom);
     const setTime = useSetAtom(currTimeAtom);
     const activeRef = useRef<HTMLDivElement>(null);
     const [annotationMode, setAnnotationMode] = useState(false);
-    const [selectedAnnotationRange, setSelectedAnnotationRange] = useState<TranscriptAnnotationSelection | null>(null);
+    const transcriptAnnotations = annotations.filter(
+        (annotation) => annotation.transcriptFileID === file.id
+    );
 
 
     function getLine(node: Node | null): HTMLElement | null {
@@ -64,7 +69,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         const selection = window.getSelection();
 
         if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-            setSelectedAnnotationRange(null);
             onSelectionChange(null);
             return;
         }
@@ -72,7 +76,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         const selectedText = selection.toString().trim();
 
         if (!selectedText) {
-            setSelectedAnnotationRange(null);
             onSelectionChange(null);
             return;
         }
@@ -81,7 +84,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         const focus = getLine(selection.focusNode);
 
         if (!anchor || !focus) {
-            setSelectedAnnotationRange(null);
             onSelectionChange(null);
             return;
         }
@@ -90,7 +92,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         const focusID = parseInt(focus.dataset.lineId || "");
 
         if (Number.isNaN(anchorID) || Number.isNaN(focusID)) {
-            setSelectedAnnotationRange(null);
             onSelectionChange(null);
             return;
         }
@@ -102,10 +103,13 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         const end = lines.find((line) => line.id === endID);
 
         if (!start || !end) {
-            setSelectedAnnotationRange(null);
             onSelectionChange(null);
             return;
         }
+
+        const forwardSelect = anchorID < focusID || (anchorID === focusID && selection.anchorOffset <= selection.focusOffset);
+        const startOffset = forwardSelect ? selection.anchorOffset : selection.focusOffset;
+        const endOffset = forwardSelect ? selection.focusOffset : selection.anchorOffset;
 
         const nextSelection: TranscriptAnnotationSelection = {
             transcriptFileID: file.id,
@@ -114,11 +118,10 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
             startTime: start.startTime + offsetSeconds,
             endTime: end.endTime + offsetSeconds,
             selectedText,
-            startOffset: selection.anchorOffset,
-            endOffset: selection.focusOffset
+            startOffset,
+            endOffset
         };
 
-        setSelectedAnnotationRange(nextSelection);
         onSelectionChange(nextSelection);
     }
 
@@ -226,7 +229,104 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         }
     }, [activeLineId]);
 
+    function highlightedLine(line: Line, annotations: (Annotation & {code: Code})[]
+    ) {
+        const annotationMatch = annotations.filter((annotation) => {
+            if (annotation.transcriptStartLine == null ||
+            annotation.transcriptEndLine == null ||
+            annotation.transcriptStartOffset == null ||
+            annotation.transcriptEndOffset == null) {
+                return false;
+            }
 
+            return (
+                line.id >= annotation.transcriptStartLine &&
+                    line.id <= annotation.transcriptEndLine
+            );
+        });
+
+        if (annotationMatch.length === 0) {
+            return line.text;
+        }
+
+        type substringHighlight = {
+            start: number;
+            end: number;
+            colour: string;
+        };
+
+        const substringHighlights: substringHighlight[] = [];
+
+        for (const annotation of annotationMatch) {
+            const startLine = annotation.transcriptStartLine;
+            const endLine = annotation.transcriptEndLine;
+            const startOffset = annotation.transcriptStartOffset;
+            const endOffset = annotation.transcriptEndOffset;
+
+            if (startLine == null || endLine == null || startOffset == null || endOffset == null) {
+                continue;
+            }
+
+            let start = 0;
+            let end = line.text.length;
+
+            if (startLine === endLine) {
+                start = startOffset;
+                end = endOffset;
+            }
+            else if (line.id === annotation.transcriptStartLine) {
+                start = startOffset;
+                end = line.text.length;
+            }
+            else if (line.id === endLine) {
+                start = 0;
+                end = endOffset;
+            }
+
+            start = Math.max(0, Math.min(start, line.text.length));
+            end = Math.max(start, Math.min(end, line.text.length));
+
+            substringHighlights.push({
+                start,
+                end,
+                colour: annotation.code.colour
+            });
+        }
+
+        substringHighlights.sort((a, b) => a.start - b.start);
+
+        const parts: React.ReactNode[] = [];
+        let cursor = 0;
+
+        substringHighlights.forEach((substringHighlight, index) => {
+            if (substringHighlight.start > cursor) {
+                parts.push(
+                    <span key={`plain-${index}-${cursor}`}>{line.text.slice(cursor, substringHighlight.start)}</span>
+                );
+            }
+
+            parts.push(
+                <span key={`highlight-${index}-${substringHighlight.start}`}
+                style={{
+                    backgroundColor: `${substringHighlight.colour}33`,
+                    borderBottom: `2px solid ${substringHighlight.colour}`
+                }}>
+                    {line.text.slice(substringHighlight.start, substringHighlight.end)}
+                </span>
+            );
+
+            cursor = Math.max(cursor, substringHighlight.end);
+        });
+
+        if (cursor < line.text.length) {
+            parts.push(
+                <span key={`plain-tail-${cursor}`}>{line.text.slice(cursor)}</span>
+            );
+        }
+        
+        return parts;
+    }
+    
     return (
         <div className="flex flex-col h-full w-full border">
 
@@ -241,7 +341,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
 
                     <button type="button" onClick={() => {
                         setAnnotationMode((currentMode) => !currentMode);
-                        setSelectedAnnotationRange(null);
                         onSelectionChange(null);
                         const selection = window.getSelection();
                         selection?.removeAllRanges();
@@ -263,8 +362,6 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
                     searchedLines.map((line) => {
                         const isCurrLine = filePositionTime >= line.startTime && filePositionTime < line.endTime;
 
-
-
                         return (
                             <div
                                 key={line.id}
@@ -276,7 +373,7 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
                                 className={`flex cursor-pointer transition-colors duration-200 border-b border-b-gray-300 border-l-4 ${
                                     isCurrLine
                                         ? "bg-blue-100 border-l-blue-500"
-                                        : "hover:bg-gray-50 text-gray-600 border-l-transparent"
+                                            : "hover:bg-gray-50 text-gray-600 border-l-transparent"
                                 }`}
                             >
 
@@ -287,8 +384,8 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
                                 </div>
 
                                 {/* Line Contents Column */}
-                                <div className="flex-1 py-2 pl-3 pr-2">
-                                    <p className="text-xs">{line.text}</p>
+                                <div className="flex-1 py-2 pl-3 pr-2" data-line-text="true">
+                                    <p className="text-xs">{highlightedLine(line, transcriptAnnotations)}</p>
                                 </div>
                             </div>
 

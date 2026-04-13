@@ -33,6 +33,8 @@ export default function PlaybackController({files, annotations, projectStartTime
         startTime: number;
         endTime: number;
         selectedText: string;
+        startOffset: number;
+        endOffset: number;
     } | null>(null);
     const [codes, setCodes] = useState<Code[]>([]);
 
@@ -46,6 +48,8 @@ export default function PlaybackController({files, annotations, projectStartTime
         transcriptStartLine: null as number | null,
         transcriptEndLine: null as number | null,
         selectedText: "",
+        transcriptStartOffset: null as number | null,
+        transcriptEndOffset: null as number | null,
         linkedMediaFileIDs: [] as number[]
     });
 
@@ -80,6 +84,8 @@ export default function PlaybackController({files, annotations, projectStartTime
         startTime: number;
         endTime: number;
         selectedText: string;
+        startOffset: number;
+        endOffset: number;
     } | null) => {
 
         if (selectedText === null) {
@@ -100,6 +106,8 @@ export default function PlaybackController({files, annotations, projectStartTime
             transcriptStartLine: selectedText.transcriptStartLine,
             transcriptEndLine: selectedText.transcriptEndLine,
             selectedText: selectedText.selectedText,
+            transcriptStartOffset: selectedText.startOffset,
+            transcriptEndOffset: selectedText.endOffset,
             linkedMediaFileIDs: []
         });
     }, [isAnnotationModalOpen]);
@@ -168,6 +176,8 @@ export default function PlaybackController({files, annotations, projectStartTime
             transcriptStartLine: selectedTranscriptAnnotation.transcriptStartLine,
             transcriptEndLine: selectedTranscriptAnnotation.transcriptEndLine,
             selectedText: selectedTranscriptAnnotation.selectedText,
+            transcriptStartOffset: selectedTranscriptAnnotation.startOffset,
+            transcriptEndOffset: selectedTranscriptAnnotation.endOffset,
             linkedMediaFileIDs: getDefaultLinkedMediaFiles()
         });
 
@@ -270,6 +280,8 @@ export default function PlaybackController({files, annotations, projectStartTime
                 transcriptStartLine: null,
                 transcriptEndLine: null,
                 selectedText: "",
+                transcriptStartOffset: null,
+                transcriptEndOffset: null,
                 linkedMediaFileIDs: []
             });
 
@@ -526,6 +538,7 @@ export default function PlaybackController({files, annotations, projectStartTime
                         className="bg-gray-50 flex flex-1 min-h-0 flex-col items-center justify-center rounded border border-gray-300 overflow-y-auto">
                         {currentTranscript ? (<TranscriptPlayer key={currentTranscript.id}
                                                                 file={currentTranscript}
+                                                                annotations={annotations}
                                                                 projectStartTime={projectStartTime}
                                                                 onSelectionChange={handleTranscriptSelection}/>) :
                             (<div className="text-gray-500">No Transcript Exists at this Timestamp</div>)}

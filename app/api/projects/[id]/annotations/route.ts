@@ -108,6 +108,8 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
             transcriptStartLine: body.transcriptStartLine ?? null,
             transcriptEndLine: body.transcriptEndLine ?? null,
             selectedText: body.selectedText || null,
+            transcriptStartOffset: body.transcriptStartOffset ?? null,
+            transcriptEndOffset: body.transcriptEndOffset ?? null,
             mediaLinks: {
                 create: linkedFiles.map((file) => ({
                     mediaFileID: file.id
