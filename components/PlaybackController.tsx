@@ -2,7 +2,7 @@
 
 import {useAtomValue} from 'jotai';
 import {currTimeAtom} from '@/app/atoms';
-import {MediaFile, Code, Annotation} from '@prisma/client'
+import {MediaFile, Code, Annotation, AnnotationMediaLink} from '@prisma/client'
 import VideoPlayer from '@/components/VideoPlayer';
 import TranscriptPlayer from '@/components/TranscriptPlayer';
 import Timeline from '@/components/Timeline';
@@ -14,6 +14,9 @@ interface PlaybackControllerProps {
     files: MediaFile[];
     annotations: (Annotation & {
         code: Code;
+        mediaLinks: (AnnotationMediaLink & {
+            mediaFile: MediaFile;
+        })[];
     })[];
     projectStartTime: number;
     projectId: number;
@@ -24,6 +27,8 @@ export default function PlaybackController({files, annotations, projectStartTime
     const playNeedle = projectStartTime + (currentTime * 1000);
 
     const [isAnnotationModalOpen, setIsAnnotationModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+    const [editedAnnotationID, setEditedAnnotationID] = useState<number | null>(null);
 
     //Used to handle just the transcript selection
     const [selectedTranscriptAnnotation, setSelectedTranscriptAnnotation] = useState<{
@@ -115,6 +120,8 @@ export default function PlaybackController({files, annotations, projectStartTime
     function closeAnnotationModal() {
         setIsAnnotationModalOpen(false);
         setSelectedTranscriptAnnotation(null);
+        setModalMode("create");
+        setEditedAnnotationID(null);
     }
 
 
@@ -167,6 +174,9 @@ export default function PlaybackController({files, annotations, projectStartTime
             return;
         }
 
+        setModalMode("create");
+        setEditedAnnotationID(null);
+
         setAnnotationInProgress({
             codeID: null,
             note: "",
@@ -179,6 +189,34 @@ export default function PlaybackController({files, annotations, projectStartTime
             transcriptStartOffset: selectedTranscriptAnnotation.startOffset,
             transcriptEndOffset: selectedTranscriptAnnotation.endOffset,
             linkedMediaFileIDs: getDefaultLinkedMediaFiles()
+        });
+
+        setIsAnnotationModalOpen(true);
+    }
+
+    function handleEditExisting(annotationID: number) {
+        const annotation = annotations.find((item) => item.id === annotationID);
+
+        if (!annotation) {
+            alert("Annotation not found");
+            return;
+        }
+
+        setModalMode("edit");
+        setEditedAnnotationID(annotation.id);
+
+        setAnnotationInProgress({
+            codeID: annotation.codeID,
+            note: "",
+            startTime: annotation.startTime,
+            endTime: annotation.endTime,
+            transcriptFileID: annotation.transcriptFileID,
+            transcriptStartLine: annotation.transcriptStartLine,
+            transcriptEndLine: annotation.transcriptEndLine,
+            selectedText: annotation.selectedText ?? "",
+            transcriptStartOffset: annotation.transcriptStartOffset,
+            transcriptEndOffset: annotation.transcriptEndOffset,
+            linkedMediaFileIDs: annotation.mediaLinks.map((link) => link.mediaFileID)
         });
 
         setIsAnnotationModalOpen(true);
@@ -293,6 +331,113 @@ export default function PlaybackController({files, annotations, projectStartTime
 
     }
 
+    async function handleAnnotationUpdate() {
+        if (editedAnnotationID == null) {
+            alert("You haven't select an annotation to edit");
+            return;
+        }
+
+        if (annotationInProgress.codeID == null) {
+            alert("You haven't selected a code");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/annotations/${editedAnnotationID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    codeID: annotationInProgress.codeID,
+                    linkedMediaFileIDs: annotationInProgress.linkedMediaFileIDs
+                })
+
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert("Problem occurred updating the annotation: " + data.error);
+                return;
+            }
+
+            closeAnnotationModal();
+
+            setAnnotationInProgress({
+                codeID: null,
+                note: "",
+                startTime: 0,
+                endTime: 0,
+                transcriptFileID: null,
+                transcriptStartLine: null,
+                transcriptEndLine: null,
+                selectedText: "",
+                transcriptStartOffset: null,
+                transcriptEndOffset: null,
+                linkedMediaFileIDs: []
+            });
+
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert("Problem occurred updating the annotation")
+        }
+    }
+
+    async function handleAnnotationDelete() {
+        if (editedAnnotationID == null) {
+            alert("You haven't select an annotation to delete");
+            return;
+        }
+
+        const confirmation = window.confirm("Do you really want to delete this annotation?");
+
+        if (!confirmation) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/annotations/${editedAnnotationID}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert("Problem occurred deleting the annotation: " + data.error);
+                return;
+            }
+
+            closeAnnotationModal();
+
+            setAnnotationInProgress({
+                codeID: null,
+                note: "",
+                startTime: 0,
+                endTime: 0,
+                transcriptFileID: null,
+                transcriptStartLine: null,
+                transcriptEndLine: null,
+                selectedText: "",
+                transcriptStartOffset: null,
+                transcriptEndOffset: null,
+                linkedMediaFileIDs: []
+            });
+
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert("Problem occurred deleting the annotation");
+        }
+    }
+
     useEffect(() => {
         setSelectedTranscriptAnnotation(null);
     }, [currentTranscript?.id]);
@@ -315,7 +460,9 @@ export default function PlaybackController({files, annotations, projectStartTime
                             {/* Empty first column */}
                             <div></div>
 
-                            <h2 className="text-xl font-bold text-center flex-1">Create Annotation</h2>
+                            <h2 className="text-xl font-bold text-center flex-1">
+                                {modalMode === "edit" ? "Edit Annotation" : "Create Annotation"}
+                            </h2>
 
                             <div className="flex justify-end">
                                 <button
@@ -481,11 +628,22 @@ export default function PlaybackController({files, annotations, projectStartTime
                                 </div>
                             </div>
 
-                            <div className="flex justify-center pt-3">
+                            <div className="flex justify-center gap-3 pt-3">
+                                {modalMode === "edit" && (
+                                    <button
+                                        type="button"
+                                        className="regular-button"
+                                        onClick={handleAnnotationDelete}>
+                                        Delete Annotation
+                                    </button>
+                                )}
+
+
+
                                 <button
                                     type="button"
                                     className="regular-button"
-                                    onClick={handleAnnotationCreation}>
+                                    onClick={modalMode === "edit" ? handleAnnotationUpdate : handleAnnotationCreation}>
                                     Save Annotation
                                 </button>
                             </div>
@@ -551,7 +709,7 @@ export default function PlaybackController({files, annotations, projectStartTime
             </div>
 
             <div className="w-full border-t border-gray-300">
-                <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime}/>
+                <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime} onEditAnnotation={handleEditExisting}/>
             </div>
         </div>
     )

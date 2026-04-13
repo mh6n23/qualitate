@@ -3,7 +3,7 @@
 import {useRef, useEffect, useState} from 'react';
 import {useAtom} from 'jotai';
 import {currTimeAtom, pixelsPerSecondAtom} from "@/app/atoms";
-import {Annotation, Code, MediaFile} from "@prisma/client";
+import {Annotation, AnnotationMediaLink, Code, MediaFile} from "@prisma/client";
 import {useRouter} from "next/navigation";
 
 
@@ -13,17 +13,22 @@ interface TimelineProps {
         code: Code;
     })[];
     projectStartTime: number;
+    onEditAnnotation: (annotationID : number) => void;
 }
 
-function AnnotationBlock({annotation, pixelsPerSecond}: {
+function AnnotationBlock({annotation, pixelsPerSecond, onEdit}: {
     annotation: Annotation & { code: Code };
     pixelsPerSecond: number;
+    onEdit: (annotationID : number) => void;
 }) {
     const position = annotation.startTime * pixelsPerSecond;
     const width = Math.max((annotation.endTime - annotation.startTime) * pixelsPerSecond, 6)
 
     return (
-        <div
+        <div onDoubleClick={(e) => {
+            e.stopPropagation();
+            onEdit(annotation.id);
+        }}
             className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-[10px] truncate px-1 flex items-center"
             style={{
                 left: `${position}px`,
@@ -66,9 +71,10 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-function AnnotationTrack({annotations, pixelsPerSecond} : {
+function AnnotationTrack({annotations, pixelsPerSecond, onEdit} : {
     annotations: (Annotation & {code:Code})[];
     pixelsPerSecond: number;
+    onEdit: (annotationID: number) => void;
 }) {
     return (
         <div className="relative h-16 border-b border-gray-500 w-full">
@@ -77,6 +83,7 @@ function AnnotationTrack({annotations, pixelsPerSecond} : {
                     key={annotation.id}
                     annotation={annotation}
                     pixelsPerSecond={pixelsPerSecond}
+                    onEdit={onEdit}
         />
     ))}
         </div>
@@ -102,7 +109,7 @@ function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-export default function Timeline({files, annotations, projectStartTime}: TimelineProps) {
+export default function Timeline({files, annotations, projectStartTime, onEditAnnotation}: TimelineProps) {
     // Default for now but i'll allow it to be changed later
     const [pixelsPerSecond] = useAtom(pixelsPerSecondAtom);
 
@@ -252,7 +259,7 @@ export default function Timeline({files, annotations, projectStartTime}: Timelin
 
                     <div className="flex flex-col min-w-full"
                          style={{minWidth: `calc(100vw + ${(currTime * pixelsPerSecond) + 800}px)`}}>
-                        <AnnotationTrack annotations={annotations} pixelsPerSecond={pixelsPerSecond} />
+                        <AnnotationTrack annotations={annotations} pixelsPerSecond={pixelsPerSecond} onEdit={onEditAnnotation}/>
                         <Track files={videoFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>
                         <Track files={imageFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}

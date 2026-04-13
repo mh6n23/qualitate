@@ -117,6 +117,10 @@ export async function DELETE(
         );
     }
 
+    await prisma.annotationMediaLink.deleteMany({
+        where: {annotationID}
+    });
+
     await prisma.annotation.delete({
         where: {id: annotationID}
     });
