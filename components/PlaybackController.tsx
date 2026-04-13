@@ -2,7 +2,7 @@
 
 import {useAtomValue} from 'jotai';
 import {currTimeAtom} from '@/app/atoms';
-import {MediaFile, Code} from '@prisma/client'
+import {MediaFile, Code, Annotation} from '@prisma/client'
 import VideoPlayer from '@/components/VideoPlayer';
 import TranscriptPlayer from '@/components/TranscriptPlayer';
 import Timeline from '@/components/Timeline';
@@ -12,11 +12,14 @@ import {useRouter} from "next/navigation";
 
 interface PlaybackControllerProps {
     files: MediaFile[];
+    annotations: (Annotation & {
+        code: Code;
+    })[];
     projectStartTime: number;
     projectId: number;
 }
 
-export default function PlaybackController({files, projectStartTime, projectId}: PlaybackControllerProps) {
+export default function PlaybackController({files, annotations, projectStartTime, projectId}: PlaybackControllerProps) {
     const currentTime = useAtomValue(currTimeAtom);
     const playNeedle = projectStartTime + (currentTime * 1000);
 
@@ -379,13 +382,13 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                                         <div className="mb-2">
                                             <label className="block font-bold mb-1">Name</label>
                                             <input
-                                            value={newCode.name}
-                                            onChange={(e) =>
-                                            setNewCode((previousCode) => ({
-                                                ...previousCode,
-                                                name: e.target.value
-                                            }))}
-                                            className="w-full border border-gray-300 rounded px-2 py-1"
+                                                value={newCode.name}
+                                                onChange={(e) =>
+                                                    setNewCode((previousCode) => ({
+                                                        ...previousCode,
+                                                        name: e.target.value
+                                                    }))}
+                                                className="w-full border border-gray-300 rounded px-2 py-1"
                                             />
                                         </div>
 
@@ -438,29 +441,27 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                                         return (
                                             <label key={file.id} className="flex items-center gap-2">
                                                 <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setAnnotationInProgress((previousAnnotation) => ({
-                                                            ...previousAnnotation,
-                                                            linkedMediaFileIDs: [
-                                                                ...previousAnnotation.linkedMediaFileIDs,
-                                                                file.id
-                                                            ]
-                                                        }));
-                                                    }
-                                                    else
-                                                    {
-                                                        setAnnotationInProgress((previousAnnotation) => ({
-                                                            ...previousAnnotation,
-                                                            linkedMediaFileIDs: [
-                                                                ...previousAnnotation.linkedMediaFileIDs.filter((id) => id !== file.id)
-                                                            ]
-                                                        }));
-                                                    }
-                                                }}
-                                                className="w-4 h-4"/>
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setAnnotationInProgress((previousAnnotation) => ({
+                                                                ...previousAnnotation,
+                                                                linkedMediaFileIDs: [
+                                                                    ...previousAnnotation.linkedMediaFileIDs,
+                                                                    file.id
+                                                                ]
+                                                            }));
+                                                        } else {
+                                                            setAnnotationInProgress((previousAnnotation) => ({
+                                                                ...previousAnnotation,
+                                                                linkedMediaFileIDs: [
+                                                                    ...previousAnnotation.linkedMediaFileIDs.filter((id) => id !== file.id)
+                                                                ]
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4"/>
                                                 <span className="text-sm">{file.fileName}</span>
                                             </label>
                                         );
@@ -476,13 +477,6 @@ export default function PlaybackController({files, projectStartTime, projectId}:
                                     Save Annotation
                                 </button>
                             </div>
-
-
-
-
-
-
-
 
 
                         </div>
@@ -544,7 +538,7 @@ export default function PlaybackController({files, projectStartTime, projectId}:
             </div>
 
             <div className="w-full border-t border-gray-300">
-                <Timeline files={files} projectStartTime={projectStartTime}/>
+                <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime}/>
             </div>
         </div>
     )

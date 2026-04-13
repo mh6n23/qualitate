@@ -23,7 +23,15 @@ export default async function ProjectPage({params}: PageProps)
     const project = await prisma.project.findUnique({
         where: {id:projectId},
         include: {
-            files: true
+            files: true,
+            annotations: {
+                include: {
+                    code: true
+                },
+                orderBy: {
+                    startTime: "asc"
+                }
+            }
         }
     });
 
@@ -66,7 +74,7 @@ export default async function ProjectPage({params}: PageProps)
             </div>
 
             {/* The 3 views and the timeline */}
-            <PlaybackController files={project.files} projectStartTime={startTime} projectId={projectId}/>
+            <PlaybackController files={project.files} annotations={project.annotations} projectStartTime={startTime} projectId={projectId}/>
 
         </main>
     );

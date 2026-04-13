@@ -3,13 +3,37 @@
 import {useRef, useEffect, useState} from 'react';
 import {useAtom} from 'jotai';
 import {currTimeAtom, pixelsPerSecondAtom} from "@/app/atoms";
-import {MediaFile} from "@prisma/client";
+import {Annotation, Code, MediaFile} from "@prisma/client";
 import {useRouter} from "next/navigation";
 
 
 interface TimelineProps {
     files: MediaFile[];
+    annotations: (Annotation & {
+        code: Code;
+    })[];
     projectStartTime: number;
+}
+
+function AnnotationBlock({annotation, pixelsPerSecond}: {
+    annotation: Annotation & { code: Code };
+    pixelsPerSecond: number;
+}) {
+    const position = annotation.startTime * pixelsPerSecond;
+    const width = Math.max((annotation.endTime - annotation.startTime) * pixelsPerSecond, 6)
+
+    return (
+        <div
+            className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-[10px] truncate px-1 flex items-center"
+            style={{
+                left: `${position}px`,
+                width: `${width}px`,
+                backgroundColor: annotation.code.colour
+            }}
+            title={`${annotation.code.name}: ${annotation.selectedText ?? "Annotation"}`}>
+            {annotation.code.name}
+        </div>
+    )
 }
 
 function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
@@ -42,6 +66,23 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
+function AnnotationTrack({annotations, pixelsPerSecond} : {
+    annotations: (Annotation & {code:Code})[];
+    pixelsPerSecond: number;
+}) {
+    return (
+        <div className="relative h-16 border-b border-gray-500 w-full">
+            {annotations.map((annotation) => (
+                <AnnotationBlock
+                    key={annotation.id}
+                    annotation={annotation}
+                    pixelsPerSecond={pixelsPerSecond}
+        />
+    ))}
+        </div>
+    );
+}
+
 function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
     files: MediaFile[],
     projectStartTime: number,
@@ -50,7 +91,7 @@ function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
 }) {
     return (
         <div className="relative h-16 border-b border-gray-500 w-full">
-            {files.map((file, i) => (
+            {files.map((file) => (
                 <FileBlock
                     key={file.id}
                     file={file}
@@ -61,7 +102,7 @@ function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-export default function Timeline({files, projectStartTime}: TimelineProps) {
+export default function Timeline({files, annotations, projectStartTime}: TimelineProps) {
     // Default for now but i'll allow it to be changed later
     const [pixelsPerSecond] = useAtom(pixelsPerSecondAtom);
 
@@ -186,6 +227,9 @@ export default function Timeline({files, projectStartTime}: TimelineProps) {
             <div className="flex border-2 border-gray-800 bg-gray-400 min-h-[100px]">
                 <div className="w-24 shrink-0 bg-gray-900 text-white flex flex-col border-r border-gray-500 z-40">
                     <div
+                        className="h-16 flex items-center justify-center font-bold text-[10px] border-b border-gray-700">ANNOTATIONS
+                    </div>
+                    <div
                         className="h-16 flex items-center justify-center font-bold text-[10px] border-b border-gray-700">VIDEOS
                     </div>
                     <div
@@ -208,6 +252,7 @@ export default function Timeline({files, projectStartTime}: TimelineProps) {
 
                     <div className="flex flex-col min-w-full"
                          style={{minWidth: `calc(100vw + ${(currTime * pixelsPerSecond) + 800}px)`}}>
+                        <AnnotationTrack annotations={annotations} pixelsPerSecond={pixelsPerSecond} />
                         <Track files={videoFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>
                         <Track files={imageFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
@@ -270,7 +315,8 @@ export default function Timeline({files, projectStartTime}: TimelineProps) {
                             )}
 
                             <div className="flex justify-center">
-                                <button type="button" onClick={saveEdit} className="regular-button flex items-center justify-center">
+                                <button type="button" onClick={saveEdit}
+                                        className="regular-button flex items-center justify-center">
                                     Save
                                 </button>
                             </div>
