@@ -5,6 +5,7 @@ import {currTimeAtom} from '@/app/atoms';
 import {MediaFile, Code, Annotation, AnnotationMediaLink} from '@prisma/client'
 import VideoPlayer from '@/components/VideoPlayer';
 import TranscriptPlayer from '@/components/TranscriptPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import Timeline from '@/components/Timeline';
 import PlaybackRemote from "@/components/PlaybackRemote";
 import {useCallback, useEffect, useState} from "react";
@@ -124,6 +125,19 @@ export default function PlaybackController({files, annotations, projectStartTime
         setEditedAnnotationID(null);
     }
 
+    const getCurrentFiles = (folder: string) => {
+        return files.filter((file) => {
+            if (!file.filePath.includes(folder)) {
+                return false;
+            }
+
+            const startTime = new Date(file.creationTime).getTime();
+            const duration = file.duration > 0 ? file.duration * 1000 : 10000;
+            const endTime = startTime + duration;
+
+            return playNeedle >= startTime && playNeedle <= endTime;
+        })
+    }
 
     const getCurrentFile = (folder: string) => {
         return files.find(file => {
@@ -147,6 +161,7 @@ export default function PlaybackController({files, annotations, projectStartTime
     const currentVideo = getCurrentFile("/Videos");
     const currentImage = getCurrentFile("/Images");
     const currentTranscript = getCurrentFile("/Transcripts");
+    const currentAudioFiles = getCurrentFiles("/Audio");
 
     const videoFiles = files.filter(f => f.filePath.includes("/Videos"));
 
@@ -455,6 +470,11 @@ export default function PlaybackController({files, annotations, projectStartTime
             {isAnnotationModalOpen && (
                 <div className="modal-overlay">
                     <div className="modal-content w-full max-w-2xl">
+
+                        {currentAudioFiles.map((audioFile) => (
+                            <AudioPlayer key={audioFile.id} file={audioFile} projectStartTime={projectStartTime}/>
+                        ))}
+
                         {/* Top Row with title and exit button */}
                         <div className="grid grid-cols-3 items-center border-b border-gray-300 pb-2 mb-4">
                             {/* Empty first column */}

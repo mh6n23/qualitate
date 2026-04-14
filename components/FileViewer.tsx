@@ -40,6 +40,8 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
     const videos = sortedFiles.filter(f => f.filePath.includes("/Videos"));
     const images = sortedFiles.filter(f => f.filePath.includes("/Images"));
     const transcripts = sortedFiles.filter(f => f.filePath.includes("/Transcripts"));
+    const audio = sortedFiles.filter(f => f.filePath.includes("/Audio"));
+
 
     function formatDate(timestamp: Date | string) {
         return new Date(timestamp).toLocaleString("en-GB", {
@@ -144,7 +146,7 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
         }
 
         try {
-            const response = await fetch(`api/files/${fileID}`, {
+            const response = await fetch(`/api/files/${fileID}`, {
                 method: "DELETE"
             });
 
@@ -218,6 +220,16 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
                             <FileCategory
                                 title="Transcripts"
                                 files={transcripts}
+                                rowEdits={rowEdits}
+                                onEditChange={updateRowEdit}
+                                onSaveTimestamp={saveTimestamp}
+                                onDeleteFile={deleteFile}
+                                formatDuration={formatDuration}
+                            />
+
+                            <FileCategory
+                                title="Audio"
+                                files={audio}
                                 rowEdits={rowEdits}
                                 onEditChange={updateRowEdit}
                                 onSaveTimestamp={saveTimestamp}

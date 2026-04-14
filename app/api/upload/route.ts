@@ -15,6 +15,10 @@ function getFileCategory(file: File) : string
     {
         return "Images";
     }
+    else if (fileType.startsWith("audio/"))
+    {
+        return "Audio";
+    }
 
     const fileExtension = extname(file.name).toLowerCase();
     const transcriptExtensions = [".vtt", ".srt", ".docx", ".doc", ".txt", ".pdf"]

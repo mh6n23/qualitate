@@ -11,6 +11,9 @@ interface TimelineProps {
     files: MediaFile[];
     annotations: (Annotation & {
         code: Code;
+        mediaLinks: (AnnotationMediaLink & {
+            mediaFile: MediaFile;
+        })[];
     })[];
     projectStartTime: number;
     onEditAnnotation: (annotationID : number) => void;
@@ -119,6 +122,7 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
     const videoFiles = files.filter(f => f.filePath.includes("/Videos/"));
     const imageFiles = files.filter(f => f.filePath.includes("/Images/"));
     const transcriptFiles = files.filter(f => f.filePath.includes("/Transcripts/"));
+    const audioFiles = files.filter(f => f.filePath.includes("/Audio/"));
 
     const router = useRouter();
     const [editingFile, setEditingFile] = useState<MediaFile | null>(null);
@@ -245,6 +249,9 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
                     <div
                         className="h-16 flex items-center justify-center font-bold text-[10px] border-b border-gray-700">TRANSCRIPTS
                     </div>
+                    <div
+                        className="h-16 flex items-center justify-center font-bold text-[10px] border-b border-gray-700">AUDIO
+                    </div>
                 </div>
 
                 <div
@@ -265,6 +272,9 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
                         <Track files={imageFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>
                         <Track files={transcriptFiles} projectStartTime={projectStartTime}
+                               pixelsPerSecond={pixelsPerSecond}
+                               onEdit={openEditor}/>
+                        <Track files={audioFiles} projectStartTime={projectStartTime}
                                pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>
                     </div>

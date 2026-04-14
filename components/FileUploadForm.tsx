@@ -3,8 +3,7 @@
 import {useRef, useState} from 'react';
 import {useRouter} from 'next/navigation';
 
-export default function FileUploader({projectId}:{projectId:number})
-{
+export default function FileUploader({projectId}: { projectId: number }) {
     const [uploading, setUploading] = useState(false);
     const [currentFileName, setCurrentFileName] = useState("");
     const [totalFiles, setTotalFiles] = useState(0);
@@ -18,32 +17,32 @@ export default function FileUploader({projectId}:{projectId:number})
     }
 
     // Grabs the duration of a video
-    const getDuration = (file: File): Promise<number> => {
+    const getDuration = (file: File, elementType: "video" | "audio"): Promise<number> => {
         // Wait for the resolve to complete before returning a value
         return new Promise(resolve => {
 
             // Create an invisible video and get the header information
-            const video = document.createElement("video");
-            video.preload = "metadata";
+            const media = document.createElement(elementType);
+            media.preload = "metadata";
 
             // Once the metadata has been read delete the URL
-            video.onloadedmetadata = () => {
-                window.URL.revokeObjectURL(video.src);
-                resolve(video.duration);
+            media.onloadedmetadata = () => {
+                window.URL.revokeObjectURL(media.src);
+                resolve(media.duration);
             };
 
             // Default to 0 if there's a problem
-            video.onerror = () => {
+            media.onerror = () => {
                 resolve(0);
             }
 
             // Load the video
-            video.src = URL.createObjectURL(file);
+            media.src = URL.createObjectURL(file);
         })
     }
 
     async function getTranscriptDuration(file: File): Promise<number> {
-        try{
+        try {
             const text = await file.text();
             const regex = /\[([\d:]+)[ \-]+([\d:]+)]\s*([^\[]+)/g;
             let acceptedLine;
@@ -59,34 +58,28 @@ export default function FileUploader({projectId}:{projectId:number})
 
             }
             return transcriptEnd;
-        } catch (error)
-        {
+        } catch (error) {
             console.error("Error parsing transcript to determine duration", error);
             return 0;
         }
     }
 
-    function convertTimeToSeconds (timeString: string) : number {
+    function convertTimeToSeconds(timeString: string): number {
         const components = timeString.trim().split(':');
         let seconds = 0;
 
         // Convert differently depending on if hours are included in the time
-        if (components.length === 3)
-        {
+        if (components.length === 3) {
             seconds = (parseInt(components[0]) * 3600) + (parseInt(components[1]) * 60) + parseFloat(components[2]);
-        }
-        else if (components.length === 2)
-        {
+        } else if (components.length === 2) {
             seconds = (parseInt(components[0]) * 60) + parseFloat(components[1])
         }
         return seconds;
     }
 
-    async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>)
-    {
+    async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         const files = event.target.files;
-        if (!files || files.length === 0)
-        {
+        if (!files || files.length === 0) {
             return;
         }
 
@@ -97,7 +90,7 @@ export default function FileUploader({projectId}:{projectId:number})
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const timestamp = new Date(file.lastModified).toISOString();
-            setCurrentFileIndex(i+1);
+            setCurrentFileIndex(i + 1);
             setCurrentFileName(file.name);
 
             try {
@@ -105,7 +98,10 @@ export default function FileUploader({projectId}:{projectId:number})
 
                 if (file.type.startsWith("video/")) {
                     // Video
-                    duration = await getDuration(file);
+                    duration = await getDuration(file, "video");
+                } else if (file.type.startsWith("audio/")) {
+                    // Transcript
+                    duration = await getDuration(file, "audio");
                 } else if (file.name.endsWith(".txt")) {
                     // Transcript
                     duration = await getTranscriptDuration(file);
@@ -130,7 +126,7 @@ export default function FileUploader({projectId}:{projectId:number})
                 }
 
                 // Remove to speedup upload process
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                //await new Promise(resolve => setTimeout(resolve, 5000));
             } catch (error) {
                 console.error(error);
                 alert(`File Upload Error for ${file.name}`);
@@ -143,8 +139,7 @@ export default function FileUploader({projectId}:{projectId:number})
         setTotalFiles(0);
         router.refresh();
 
-        if (event.target)
-        {
+        if (event.target) {
             event.target.value = "";
         }
 
@@ -157,12 +152,12 @@ export default function FileUploader({projectId}:{projectId:number})
             </button>
 
             <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-            multiple
-            accept="video/*, image/*, .vtt, .docx, .txt"/>
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                multiple
+                accept="video/*, audio/*, image/*, .vtt, .docx, .txt"/>
 
             {uploading && (
 
@@ -196,7 +191,6 @@ export default function FileUploader({projectId}:{projectId:number})
 
 
                 </div>
-
 
 
             )}
