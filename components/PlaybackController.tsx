@@ -131,9 +131,8 @@ export default function PlaybackController({files, annotations, projectStartTime
                 return false;
             }
 
-            const startTime = new Date(file.creationTime).getTime();
-            const duration = file.duration > 0 ? file.duration * 1000 : 10000;
-            const endTime = startTime + duration;
+            const startTime = getFileStartTime(file);
+            const endTime = getFileEndTime(file);
 
             return playNeedle >= startTime && playNeedle <= endTime;
         })
@@ -145,14 +144,8 @@ export default function PlaybackController({files, annotations, projectStartTime
                 return false;
             }
 
-            const startTime = new Date(file.creationTime).getTime();
-            let duration = file.duration > 0 ? (file.duration * 1000) : 10000;
-
-            if (folder === "/Transcripts") {
-                duration = 86400000;
-            }
-
-            const endTime = startTime + duration;
+            const startTime = getFileStartTime(file);
+            const endTime = getFileEndTime(file);
 
             return playNeedle >= startTime && playNeedle <= endTime;
         })
@@ -163,24 +156,38 @@ export default function PlaybackController({files, annotations, projectStartTime
     const currentTranscript = getCurrentFile("/Transcripts");
     const currentAudioFiles = getCurrentFiles("/Audio");
 
-    const videoFiles = files.filter(f => f.filePath.includes("/Videos"));
+    const durationFiles = files.filter((file) => getFileDuration(file) > 0);
 
-    // Default until changed by end time of final video (for now)
-    let projectDurationSecs = 10;
-    if (videoFiles.length > 0) {
-        // Sort videos in descending order
-        const sortedVids = [...videoFiles].sort((a, b) =>
-            new Date(b.creationTime).getTime() - new Date(a.creationTime).getTime());
+    // Default incase duration calc goes wrong
+    let projectEndTime = projectStartTime + 10000;
 
-        // Grab last video
-        const lastVideo = sortedVids[0];
+    if (durationFiles.length > 0) {
+        projectEndTime = Math.max(
+            ...durationFiles.map((file) => getFileEndTime(file))
+        );
+    }
 
-        const lastVidStartTime = new Date(lastVideo.creationTime).getTime();
-        const lastVidDuration = lastVideo.duration > 0 ?
-            (lastVideo.duration * 1000) : 10000;
+    const projectDurationSecs = Math.max(0, (projectEndTime - projectStartTime) / 1000);
 
-        const projectEndTime = lastVidStartTime + lastVidDuration;
-        projectDurationSecs = (projectEndTime - projectStartTime) / 1000;
+    function getFileStartTime(file: MediaFile) {
+        return new Date(file.creationTime).getTime();
+    }
+
+    function getFileDuration(file: MediaFile) {
+        if (file.duration > 0) {
+            return file.duration * 1000;
+        }
+
+        if (file.filePath.includes("/Images")) {
+            // Default value
+            return 30000;
+        }
+
+        return 0;
+    }
+
+    function getFileEndTime(file: MediaFile) {
+        return getFileStartTime(file) + getFileDuration(file);
     }
 
     function handleOpenAnnotationModal() {
@@ -240,20 +247,9 @@ export default function PlaybackController({files, annotations, projectStartTime
     function getDefaultLinkedMediaFiles() {
         return files
             .filter((file) => {
-                const fileStart = new Date(file.creationTime).getTime();
-
-                let fileDurationMs = 30000;
-                if (file.duration > 0) {
-                    fileDurationMs = file.duration * 1000;
-                }
-
-                if (file.filePath.includes("/Transcripts")) {
-                    fileDurationMs = 86400000;
-                }
-
-                const fileEnd = fileStart + fileDurationMs;
+                const fileStart = getFileStartTime(file);
+                const fileEnd = getFileEndTime(file);
                 const absoluteCurrentTime = projectStartTime + currentTime * 1000;
-
                 return absoluteCurrentTime >= fileStart && absoluteCurrentTime <= fileEnd;
             })
             .map((file) => file.id);
@@ -729,7 +725,7 @@ export default function PlaybackController({files, annotations, projectStartTime
             </div>
 
             <div className="w-full border-t border-gray-300">
-                <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime} onEditAnnotation={handleEditExisting}/>
+                <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime} onEditAnnotation={handleEditExisting} projectDuration={projectDurationSecs}/>
             </div>
         </div>
     )

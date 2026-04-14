@@ -17,6 +17,7 @@ interface TimelineProps {
     })[];
     projectStartTime: number;
     onEditAnnotation: (annotationID : number) => void;
+    projectDuration: number;
 }
 
 function AnnotationBlock({annotation, pixelsPerSecond, onEdit}: {
@@ -32,19 +33,33 @@ function AnnotationBlock({annotation, pixelsPerSecond, onEdit}: {
             e.stopPropagation();
             onEdit(annotation.id);
         }}
-            className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-[10px] truncate px-1 flex items-center"
-            style={{
-                left: `${position}px`,
-                width: `${width}px`,
-                backgroundColor: annotation.code.colour
-            }}
-            title={`${annotation.code.name}: ${annotation.selectedText ?? "Annotation"}`}>
+             className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-[10px] truncate px-1 flex items-center"
+             style={{
+                 left: `${position}px`,
+                 width: `${width}px`,
+                 backgroundColor: annotation.code.colour
+             }}
+             title={`${annotation.code.name}: ${annotation.selectedText ?? "Annotation"}`}>
             {annotation.code.name}
         </div>
     )
 }
 
+function getDuration(file: MediaFile) {
+    if (file.duration > 0) {
+        return file.duration;
+    }
+
+    if (file.filePath.includes("/Images/")) {
+        return 30;
+    }
+
+    return 0;
+}
+
 function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
+
+
     file: MediaFile,
     projectStartTime: number,
     pixelsPerSecond: number,
@@ -55,7 +70,7 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
     const position = offsetSeconds * pixelsPerSecond;
 
     // Set duration to 30 seconds if the file didn't previously have a duration
-    const shownDuration = file.duration > 0 ? file.duration : 30;
+    const shownDuration = getDuration(file);
     const width = shownDuration * pixelsPerSecond;
 
 
@@ -112,7 +127,7 @@ function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-export default function Timeline({files, annotations, projectStartTime, onEditAnnotation}: TimelineProps) {
+export default function Timeline({files, annotations, projectStartTime, onEditAnnotation, projectDuration}: TimelineProps) {
     // Default for now but i'll allow it to be changed later
     const [pixelsPerSecond] = useAtom(pixelsPerSecondAtom);
 
@@ -202,8 +217,8 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
 
         // Only change the time if the track contents were clicked, not the labels
         if (relativeDistance >= 0) {
-            const newTime = relativeDistance / pixelsPerSecond;
-            setCurrTime(newTime);
+            const newTime = Math.min(projectDuration, relativeDistance / pixelsPerSecond);
+            setCurrTime(Math.max(0, newTime));
         }
     }
 
@@ -265,7 +280,7 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
                     </div>
 
                     <div className="flex flex-col min-w-full"
-                         style={{minWidth: `calc(100vw + ${(currTime * pixelsPerSecond) + 800}px)`}}>
+                         style={{minWidth: `calc(100vw + ${(projectDuration * pixelsPerSecond) + 200}px)`}}>
                         <AnnotationTrack annotations={annotations} pixelsPerSecond={pixelsPerSecond} onEdit={onEditAnnotation}/>
                         <Track files={videoFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>

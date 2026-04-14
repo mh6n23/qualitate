@@ -139,7 +139,8 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
     }
 
     function convertTimeToSeconds(timeString: string): number {
-        const components = timeString.trim().split(':');
+        const commaCheck = timeString.trim().replace(",", ".");
+        const components = commaCheck.trim().split(':');
         let seconds = 0;
 
         // Convert differently depending on if hours are included in the time
@@ -176,6 +177,52 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
         return lines;
     }
 
+    function parseVTT(text: string): Line[] {
+        const lines: Line[] = [];
+        const rows = text.split(/\r?\n/);
+        let index = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i].trim();
+
+            if (!row.includes("-->")) {
+                continue;
+            }
+
+            const [start, end] = row.split("-->").map((part) => part.trim());
+
+            if (!start || !end) {
+                continue;
+            }
+
+            const startTime = convertTimeToSeconds(start.replace(",", "."));
+            const endTime = convertTimeToSeconds(end.split(" ")[0].replace(",","."));
+
+            const textLines: string[] = []
+            let j = i + 1;
+
+            while (j < rows.length && rows[j].trim() !== "") {
+                textLines.push(rows[j].trim());
+                j++;
+            }
+
+            const content = textLines.join(" ").trim();
+
+            if (content) {
+                lines.push({
+                    id: index++,
+                    startTime,
+                    endTime,
+                    text: content
+                });
+            }
+
+            i = j;
+        }
+
+        return lines;
+    }
+
 
     useEffect(() => {
         if (!file) {
@@ -188,7 +235,13 @@ export default function TranscriptPlayer({file, projectStartTime, onSelectionCha
             try {
                 const transcriptFile = await fetch(file.filePath);
                 const transcriptText = await transcriptFile.text();
-                const parsedLines = parseTranscript(transcriptText);
+
+                let parsedLines: Line[] = [];
+                if (file.fileName.toLowerCase().endsWith(".vtt")) {
+                    parsedLines = parseVTT(transcriptText);
+                } else {
+                    parsedLines = parseTranscript(transcriptText);
+                }
 
                 if (fileActive) {
                     setLines(parsedLines);

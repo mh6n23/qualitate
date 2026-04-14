@@ -21,7 +21,7 @@ function getFileCategory(file: File) : string
     }
 
     const fileExtension = extname(file.name).toLowerCase();
-    const transcriptExtensions = [".vtt", ".srt", ".docx", ".doc", ".txt", ".pdf"]
+    const transcriptExtensions = [".vtt", ".txt"]
 
     if (transcriptExtensions.includes(fileExtension))
     {

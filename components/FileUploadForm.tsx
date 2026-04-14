@@ -64,6 +64,38 @@ export default function FileUploader({projectId}: { projectId: number }) {
         }
     }
 
+    async function getVTTduration(file: File): Promise<number> {
+        try {
+            const text = await file.text();
+            const lines = text.split(/\r?\n/);
+            let maxEnd = 0;
+
+            for (const line of lines) {
+                if (!line.includes("-->")) {
+                    continue;
+                }
+                const [start, end] = line.split("-->").map((part) => part.trim());
+
+                if (!end) {
+                    continue;
+                }
+
+                const newEnd = end.split(" ")[0].replace(",",".");
+                const endSeconds = convertTimeToSeconds(newEnd);
+
+                if (endSeconds > maxEnd) {
+                    maxEnd = endSeconds;
+                }
+            }
+
+            return maxEnd
+
+        } catch (error) {
+            console.error("Error parsing VTT transcript to determine duration", error);
+            return 0;
+        }
+    }
+
     function convertTimeToSeconds(timeString: string): number {
         const components = timeString.trim().split(':');
         let seconds = 0;
@@ -92,6 +124,7 @@ export default function FileUploader({projectId}: { projectId: number }) {
             const timestamp = new Date(file.lastModified).toISOString();
             setCurrentFileIndex(i + 1);
             setCurrentFileName(file.name);
+            const name = file.name.toLowerCase();
 
             try {
                 let duration = 0;
@@ -100,12 +133,15 @@ export default function FileUploader({projectId}: { projectId: number }) {
                     // Video
                     duration = await getDuration(file, "video");
                 } else if (file.type.startsWith("audio/")) {
-                    // Transcript
+                    // Audio
                     duration = await getDuration(file, "audio");
-                } else if (file.name.endsWith(".txt")) {
+                } else if (name.endsWith(".txt")) {
                     // Transcript
                     duration = await getTranscriptDuration(file);
-                } else {
+                } else if (name.endsWith(".vtt")) {
+                    // Transcript
+                    duration = await getVTTduration(file);
+                }else {
                     // Set default duration for image files
                     duration = 30;
                 }
@@ -157,7 +193,7 @@ export default function FileUploader({projectId}: { projectId: number }) {
                 className="hidden"
                 onChange={handleFileChange}
                 multiple
-                accept="video/*, audio/*, image/*, .vtt, .docx, .txt"/>
+                accept="video/*, audio/*, image/*, .vtt, .txt"/>
 
             {uploading && (
 

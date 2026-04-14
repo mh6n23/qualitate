@@ -30,8 +30,16 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
 
             // Update Jotai Atom
             setCurrTime(previousTime => {
-                const currentTime = previousTime + (changeInTime * playSpeed)
-                return Math.max(0, currentTime);
+                const nextTime = previousTime + (changeInTime * playSpeed);
+                const clampedTime = Math.min(projectDuration, Math.max(0, nextTime));
+
+                if (playSpeed > 0 && clampedTime >= projectDuration) {
+                    setIsPlaying(false);
+                    setPlaySpeed(1);
+                    return projectDuration;
+                }
+
+                return clampedTime;
             });
         }
         // Store the current time for the next time this function is run
@@ -81,6 +89,14 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
             setCurrTime(0);
         }
     }, [currTime, playSpeed, isPlaying]);
+
+    useEffect(() => {
+        if (currTime >= projectDuration && playSpeed > 0 && isPlaying) {
+            setIsPlaying(false);
+            setPlaySpeed(1);
+            setCurrTime(projectDuration);
+        }
+    }, [currTime, playSpeed, isPlaying, projectDuration])
 
     const changeSpeed = (newSpeed: number) => {
         if (playSpeed === newSpeed) {
@@ -172,7 +188,10 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
                     max={projectDuration}
                     step="0.01"
                     value={currTime}
-                    onChange={(e) => setCurrTime(parseFloat(e.target.value))}
+                    onChange={(e) => {
+                    const newTime = parseFloat(e.target.value);
+                    setCurrTime(Math.min(projectDuration, Math.max(0, newTime)));
+                    }}
                     className="flex-1 h-1.5 bg-black rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
                     />
 
