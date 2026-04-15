@@ -132,4 +132,41 @@ export async function POST(
             {status: 500}
         );
     }
+
+}
+
+export async function DELETE(
+    req: Request,
+    context: { params: Promise<{ id: string }> }) {
+        const{id} = await context.params;
+        const themeID = parseInt(id);
+        const body = await req.json();
+
+        if (Number.isNaN(themeID)) {
+            return NextResponse.json(
+                {error: "Invalid theme ID"},
+                {status: 400}
+            );
+        }
+
+        if (body.codeID == null) {
+            return NextResponse.json({error: "No CodeID provided"}, {status: 400});
+        }
+
+        const link = await prisma.themeCode.findFirst({
+            where: {
+                themeID,
+                codeID: body.codeID
+            }
+        });
+
+        if (!link) {
+            return NextResponse.json({error: "Code isn't linked to theme"}, {status: 404});
+        }
+
+        await prisma.themeCode.delete({
+            where: {id: link.id}
+        });
+
+        return NextResponse.json({success: true});
 }

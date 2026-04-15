@@ -11,8 +11,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         where: {projectID},
         orderBy: {name: "asc"},
         include: {
-            _count: {
-                select: {annotations: true}
+            annotations: {
+                include: {
+                    transcriptFile: true
+                },
+                orderBy: {startTime: "asc"}
             }
         }
     });
