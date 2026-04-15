@@ -139,16 +139,18 @@ export default function PlaybackController({files, annotations, projectStartTime
     }
 
     const getCurrentFile = (folder: string) => {
-        return files.find(file => {
-            if (!file.filePath.includes(folder)) {
-                return false;
-            }
+       const activeFiles = files.filter((file) => {
+           if (!file.filePath.includes(folder)) {
+               return false;
+           }
 
-            const startTime = getFileStartTime(file);
-            const endTime = getFileEndTime(file);
+           const startTime = getFileStartTime(file);
+           const endTime = getFileEndTime(file);
 
-            return playNeedle >= startTime && playNeedle <= endTime;
-        })
+           return playNeedle >= startTime && playNeedle <= endTime;
+       }).sort((a,b) => getFileStartTime(b) - getFileStartTime(a))
+
+        return activeFiles[0];
     }
 
     const currentVideo = getCurrentFile("/Videos");
