@@ -24,6 +24,27 @@ model Project {
     codes Code[]
     annotations Annotation[]
     themes Theme[]
+    events Event[]
+    groups Group[]
+}
+
+model Event {
+    id Int @id @default(autoincrement())
+    name String
+    projectID Int
+    project Project @relation(fields: [projectID], references: [id])
+    files MediaFile[]
+    @@unique([projectID, name])
+}
+
+model Group {
+    id Int @id @default(autoincrement())
+    name String
+    description String?
+    projectID Int
+    project Project @relation(fields: [projectID], references: [id])
+    files MediaFile[]
+    @@unique([projectID, name])
 }
 
 model MediaFile {
@@ -34,7 +55,12 @@ model MediaFile {
     creationTime DateTime @default(now())
     duration Float @default(0)
     projectID Int
+    eventID Int?
+    groupID Int?
+
     project Project @relation(fields: [projectID], references: [id])
+    event Event? @relation(fields: [eventID], references: [id])
+    group Group? @relation(fields: [groupID], references: [id])
 
     transcriptAnnotations Annotation[] @relation("TranscriptSource")
     annotationLinks AnnotationMediaLink[]
