@@ -1,12 +1,6 @@
 import {prisma} from "@/lib/prisma";
 import {notFound} from "next/navigation";
-import VideoPlayer from "@/components/VideoPlayer";
-import TranscriptPlayer from "@/components/TranscriptPlayer";
-import FileUploader from "@/components/FileUploadForm";
-import FileViewer from "@/components/FileViewer";
-import Timeline from "@/components/Timeline";
-import PlaybackController from "@/components/PlaybackController";
-import Themes from '@/components/Themes';
+import ProjectWorkspace from "@/components/ProjectWorkspace";
 
 
 interface PageProps
@@ -57,30 +51,11 @@ export default async function ProjectPage({params}: PageProps)
 
     return (
         <main className="p-6 flex flex-col h-screen">
-            <div className="grid grid-cols-3 items-center">
-                <div className="flex justify-start gap-4">
-                    <FileUploader projectId={projectId}/>
-                    <FileViewer files={project.files}/>
-                </div>
-
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold">Workspace</h1>
-                </div>
-
-                <div className="flex justify-end">
-                    <Themes projectID={projectId}/>
-                </div>
-
-
-            </div>
-            <div className="text-center">
-                {/*<p>Project ID: {params.id}</p>*/}
-                <p className="text-xl">Project ID: {projectId}</p>
-            </div>
-
-            {/* The 3 views and the timeline */}
-            <PlaybackController files={project.files} annotations={project.annotations} projectStartTime={startTime} projectId={projectId}/>
-
+            <ProjectWorkspace
+                projectId={projectId}
+                projectStartTime={startTime}
+                files={project.files}
+                annotations={project.annotations}/>
         </main>
     );
 }

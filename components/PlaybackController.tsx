@@ -8,7 +8,7 @@ import TranscriptPlayer from '@/components/TranscriptPlayer';
 import AudioPlayer from '@/components/AudioPlayer';
 import Timeline from '@/components/Timeline';
 import PlaybackRemote from "@/components/PlaybackRemote";
-import {useCallback, useEffect, useState} from "react";
+import {forwardRef, useCallback, useEffect, useImperativeHandle, useState} from "react";
 import {useRouter} from "next/navigation";
 
 interface PlaybackControllerProps {
@@ -23,7 +23,12 @@ interface PlaybackControllerProps {
     projectId: number;
 }
 
-export default function PlaybackController({files, annotations, projectStartTime, projectId}: PlaybackControllerProps) {
+export interface PlaybackControllerHandle {
+    openAnnotationModal: () => void;
+}
+
+const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControllerProps>(
+    function PlaybackController({files, annotations, projectStartTime, projectId}, ref){
     const currentTime = useAtomValue(currTimeAtom);
     const playNeedle = projectStartTime + (currentTime * 1000);
 
@@ -124,6 +129,10 @@ export default function PlaybackController({files, annotations, projectStartTime
         setModalMode("create");
         setEditedAnnotationID(null);
     }
+
+    useImperativeHandle(ref, () => ({
+    openAnnotationModal: handleOpenAnnotationModal
+    }));
 
     const getCurrentFiles = (folder: string) => {
         return files.filter((file) => {
@@ -461,10 +470,6 @@ export default function PlaybackController({files, annotations, projectStartTime
     return (
         <div className="flex flex-col w-full mt-4">
 
-            <div className="flex justify-end mb-4">
-                <button className="regular-button" onClick={handleOpenAnnotationModal}>+ Annotation</button>
-            </div>
-
             {isAnnotationModalOpen && (
                 <div className="modal-overlay">
                     <div className="modal-content w-full max-w-2xl">
@@ -730,5 +735,7 @@ export default function PlaybackController({files, annotations, projectStartTime
                 <Timeline files={files} annotations={annotations} projectStartTime={projectStartTime} onEditAnnotation={handleEditExisting} projectDuration={projectDurationSecs}/>
             </div>
         </div>
-    )
-}
+    );
+});
+
+export default PlaybackController;
