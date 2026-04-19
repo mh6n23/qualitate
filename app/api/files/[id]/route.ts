@@ -85,9 +85,11 @@ export async function PATCH(
     const updateData: {
         creationTime?: Date;
         duration?: number;
+        eventID?: number;
+        groupID?: number;
     } = {};
 
-    if (body.createTime != null) {
+    if (body.creationTime != null) {
         const newTime = new Date(body.creationTime);
 
         if (Number.isNaN(newTime.getTime())) {
@@ -111,6 +113,42 @@ export async function PATCH(
         }
 
         updateData.duration = parsedDuration;
+    }
+
+    if (body.eventID != null) {
+        const event = await prisma.event.findFirst({
+            where: {
+                id: body.eventID,
+                projectID: file.projectID
+            }
+        });
+
+        if (!event) {
+            return NextResponse.json(
+                {error: "Couldn't find event in project"},
+                {status: 400}
+            );
+        }
+
+        updateData.eventID = body.eventID;
+    }
+
+    if (body.groupID != null) {
+        const group = await prisma.group.findFirst({
+            where: {
+                id: body.groupID,
+                projectID: file.projectID
+            }
+        });
+
+        if (!group) {
+            return NextResponse.json(
+                {error: "Couldn't find group in project"},
+                {status: 400}
+            );
+        }
+
+        updateData.groupID = body.groupID;
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -40,7 +40,6 @@ model Event {
 model Group {
     id Int @id @default(autoincrement())
     name String
-    description String?
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
     files MediaFile[]

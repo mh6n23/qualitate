@@ -3,28 +3,21 @@ import {prisma} from '@/lib/prisma'; // Connects to database
 import {writeFile, mkdir} from "fs/promises"; // For accessing user's drive
 import {join, extname} from 'path';
 
-function getFileCategory(file: File) : string
-{
+function getFileCategory(file: File): string {
     const fileType = file.type;
 
-    if (fileType.startsWith("video/"))
-    {
+    if (fileType.startsWith("video/")) {
         return "Videos";
-    }
-    else if (fileType.startsWith("image/"))
-    {
+    } else if (fileType.startsWith("image/")) {
         return "Images";
-    }
-    else if (fileType.startsWith("audio/"))
-    {
+    } else if (fileType.startsWith("audio/")) {
         return "Audio";
     }
 
     const fileExtension = extname(file.name).toLowerCase();
     const transcriptExtensions = [".vtt", ".txt"]
 
-    if (transcriptExtensions.includes(fileExtension))
-    {
+    if (transcriptExtensions.includes(fileExtension)) {
         return "Transcripts";
     }
 
@@ -32,26 +25,26 @@ function getFileCategory(file: File) : string
 }
 
 // async runs in background
-export async function POST(request: Request)
-{
-    try
-    {
+export async function POST(request: Request) {
+    try {
         // Open package from user containing the file
         const data = await request.formData();
         const file: File | null = data.get('file') as unknown as File;
         const projectID = data.get('projectID') as string;
         const duration = parseFloat(data.get('duration') as string) || 0;
+        const eventID = parseInt(data.get('eventID') as string);
+        const groupID = parseInt(data.get('groupID') as string);
 
-        if (!file || !projectID)
-        {
+        if (!file || !projectID || Number.isNaN(eventID) || Number.isNaN(groupID)) {
             let errorMsg = "";
-            if (!file)
-            {
+            if (!file) {
                 errorMsg = "Missing File";
-            }
-            else if (!projectID)
-            {
+            } else if (!projectID) {
                 errorMsg = "Missing Project ID";
+            } else if (Number.isNaN(eventID)) {
+                errorMsg = "Invalid Event ID";
+            } else if (Number.isNaN(groupID)) {
+                errorMsg = "Missing Group ID";
             }
 
             return NextResponse.json(
@@ -65,9 +58,36 @@ export async function POST(request: Request)
             where: {id: parseInt(projectID)}
         });
 
-        if (!project)
-        {
+        if (!project) {
             return NextResponse.json({error: "Project not found"}, {status: 404})
+        }
+
+        const event = await prisma.event.findFirst({
+            where: {
+                id: eventID,
+                projectID: project.id
+            }
+        });
+
+        if (!event) {
+            return NextResponse.json(
+                {error: "Event not found"},
+                {status: 400}
+            );
+        }
+
+        const group = await prisma.group.findFirst({
+            where: {
+                id: groupID,
+                projectID: project.id
+            }
+        });
+
+        if (!group) {
+            return NextResponse.json(
+                {error: "Group not found"},
+                {status: 400}
+            );
         }
 
         const catFolder = getFileCategory(file);
@@ -92,15 +112,15 @@ export async function POST(request: Request)
                 filePath: databaseFilePath,
                 fileType: file.type,
                 projectID: project.id,
+                eventID,
+                groupID,
                 duration: duration,
                 creationTime: new Date(timestamp)
             },
         });
 
         return NextResponse.json({success: true, file: newFile});
-    }
-    catch (error)
-    {
+    } catch (error) {
         console.error(error);
         return NextResponse.json({error: "Upload failed"}, {status: 500});
     }

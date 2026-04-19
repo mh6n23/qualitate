@@ -17,7 +17,12 @@ export default async function ProjectPage({params}: PageProps)
     const project = await prisma.project.findUnique({
         where: {id:projectId},
         include: {
-            files: true,
+            files: {
+                include: {
+                    event: true,
+                    group: true
+                }
+            },
             annotations: {
                 include: {
                     code: true,
@@ -30,6 +35,16 @@ export default async function ProjectPage({params}: PageProps)
                 orderBy: {
                     startTime: "asc"
                 }
+            },
+            events: {
+                orderBy: {
+                    name: "asc"
+                }
+            },
+            groups: {
+                orderBy: {
+                    name: "asc"
+                }
             }
         }
     });
@@ -39,14 +54,13 @@ export default async function ProjectPage({params}: PageProps)
         notFound();
     }
 
-    // Collect all the video files via filtering then sort them by their creation time
-    const videoFiles = project.files
-        .filter(f => f.filePath.includes("/Videos"))
+    const datedFiles = project.files
+        .filter(f => f.creationTime != null)
         .sort((a, b) => new Date(a.creationTime).getTime() - new Date(b.creationTime).getTime());
 
     // Set the start time of the project to be the time of the earliest video, else fall back to the project's creation time
-    const startTime = videoFiles.length > 0
-        ? new Date(videoFiles[0].creationTime).getTime()
+    const startTime = datedFiles.length > 0
+        ? new Date(datedFiles[0].creationTime).getTime()
         : new Date(project.creationTime).getTime();
 
     return (
@@ -55,7 +69,9 @@ export default async function ProjectPage({params}: PageProps)
                 projectId={projectId}
                 projectStartTime={startTime}
                 files={project.files}
-                annotations={project.annotations}/>
+                annotations={project.annotations}
+                events={project.events}
+                groups={project.groups}/>
         </main>
     );
 }

@@ -3,9 +3,36 @@
 import {useAtom} from 'jotai';
 import {currTimeAtom, pixelsPerSecondAtom, playingAtom, playSpeedAtom} from "@/app/atoms";
 import {useEffect, useRef} from "react";
-import {apply} from "effect/Function";
 
-export default function PlaybackRemote({projectStartTime, projectDuration}:{projectStartTime:number, projectDuration:number}) {
+interface EventType {
+    id: number;
+    name: string;
+}
+
+interface GroupType {
+    id: number;
+    name: string;
+}
+
+export default function PlaybackRemote({
+                                           projectStartTime,
+                                           projectDuration,
+                                           events,
+                                           groups,
+                                           selectedEventID,
+                                           selectedGroupID,
+                                           onEventChange,
+                                           onGroupChange
+                                       }: {
+    projectStartTime: number;
+    projectDuration: number;
+    events: EventType[];
+    groups: GroupType[];
+    selectedEventID: number | "all";
+    selectedGroupID: number | "all";
+    onEventChange: (value: number | "all") => void;
+    onGroupChange: (value: number | "all") => void;
+}) {
     const [currTime, setCurrTime] = useAtom(currTimeAtom);
     const [isPlaying, setIsPlaying] = useAtom(playingAtom);
     const [playSpeed, setPlaySpeed] = useAtom(playSpeedAtom);
@@ -50,22 +77,24 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
     };
 
     useEffect(() => {
-        if (currTime === 0)
-        {
+        if (projectDuration <= 0) {
             setCurrTime(0)
+            setIsPlaying(false);
+            setPlaySpeed(1);
+            return;
         }
-    }, [projectStartTime]);
+
+        setCurrTime(0);
+        setIsPlaying(false);
+        setPlaySpeed(1);
+    }, [projectStartTime, projectDuration, setCurrTime, setIsPlaying, setPlaySpeed]);
 
     useEffect(() => {
-        if (isPlaying)
-        {
+        if (isPlaying) {
             // Begin frame
             reqRef.current = requestAnimationFrame(animate);
-        }
-        else
-        {
-            if (reqRef.current)
-            {
+        } else {
+            if (reqRef.current) {
                 // Stop calling animation function
                 cancelAnimationFrame(reqRef.current);
                 prevTimeRef.current = null;
@@ -73,8 +102,7 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
         }
 
         return () => {
-            if (reqRef.current)
-            {
+            if (reqRef.current) {
                 cancelAnimationFrame(reqRef.current);
             }
         }
@@ -82,8 +110,7 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
     }, [isPlaying, playSpeed]);
 
     useEffect(() => {
-        if (currTime <= 0 && playSpeed < 0 && isPlaying)
-        {
+        if (currTime <= 0 && playSpeed < 0 && isPlaying) {
             setIsPlaying(false);
             setPlaySpeed(1);
             setCurrTime(0);
@@ -102,24 +129,21 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
         if (playSpeed === newSpeed) {
             // Reset if the same button is pressed again
             setPlaySpeed(1);
-        }
-        else
-        {
+        } else {
             setPlaySpeed(newSpeed);
 
-            if (!isPlaying)
-            {
+            if (!isPlaying) {
                 setIsPlaying(true);
             }
         }
     }
 
     const zoomOut = () => {
-        setPixelsPerSecond(prev => Math.max(prev-5, 5));
+        setPixelsPerSecond(prev => Math.max(prev - 5, 5));
     }
 
     const zoomIn = () => {
-        setPixelsPerSecond(prev => Math.min(prev+5, 100));
+        setPixelsPerSecond(prev => Math.min(prev + 5, 100));
     }
 
     return (
@@ -130,7 +154,7 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
                     <button
                         onClick={() => changeSpeed(-speedChange)}
                         className={`text-white w-12 h-12 flex items-center justify-center bg-blue-600  hover:bg-blue-500  transition-all active:scale-95 shadow-lg ${
-                        playSpeed === -speedChange ? 'scale-85' : 'scale-100'}`}>
+                            playSpeed === -speedChange ? 'scale-85' : 'scale-100'}`}>
                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
                         </svg>
@@ -142,13 +166,16 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
                             if (!isPlaying) {
                                 setPlaySpeed(1);
                             }
-                            setIsPlaying(!isPlaying)}}
+                            setIsPlaying(!isPlaying)
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-blue-600  hover:bg-blue-500  transition-all active:scale-95 shadow-lg">
                         {isPlaying ?
                             (<div className="flex gap-1.5">
                                 <div className="w-1.5 h-5 bg-white rounded-full"></div>
-                                <div className="w-1.5 h-5 bg-white rounded-full"></div></div>)
-                            : (<div className="ml-1 w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent"></div>)}
+                                <div className="w-1.5 h-5 bg-white rounded-full"></div>
+                            </div>)
+                            : (<div
+                                className="ml-1 w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent"></div>)}
                     </button>
 
                     {/* Fast Fprward Button */}
@@ -175,6 +202,30 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
                         -
                     </button>
 
+                    <div className="flex items-center gap-2">
+                        <label className="text-white text-sm">Event</label>
+                        <select
+                        value={selectedEventID} onChange={(e) => onEventChange(e.target.value === "all" ? "all" : parseInt(e.target.value))}
+                        className="border border-gray-300 rounded px-2 py-1 bg-white text-black">
+                            <option value="all">All Events</option>
+                            {events.map(event => (
+                                <option key={event.id} value={event.id}>{event.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <label className="text-white text-sm">Group</label>
+                        <select
+                            value={selectedGroupID} onChange={(e) => onGroupChange(e.target.value === "all" ? "all" : parseInt(e.target.value))}
+                            className="border border-gray-300 rounded px-2 py-1 bg-white text-black">
+                            <option value="all">All Groups</option>
+                            {groups.map(group => (
+                                <option key={group.id} value={group.id}>{group.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
 
                 </div>
 
@@ -189,11 +240,11 @@ export default function PlaybackRemote({projectStartTime, projectDuration}:{proj
                     step="0.01"
                     value={currTime}
                     onChange={(e) => {
-                    const newTime = parseFloat(e.target.value);
-                    setCurrTime(Math.min(projectDuration, Math.max(0, newTime)));
+                        const newTime = parseFloat(e.target.value);
+                        setCurrTime(Math.min(projectDuration, Math.max(0, newTime)));
                     }}
                     className="flex-1 h-1.5 bg-black rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
-                    />
+                />
 
 
             </div>

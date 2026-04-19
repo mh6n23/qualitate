@@ -1,37 +1,73 @@
 'use client';
 
-import {useMemo, useState} from 'react';
+import {useMemo, useState, useEffect} from 'react';
 import {MediaFile} from '@prisma/client';
 import {useRouter} from 'next/navigation';
 
-function buildRowEdits(files: MediaFile[]) {
-    const edits: Record<number, { date: string; time: string; duration: string }> = {};
+interface EventType {
+    id: number;
+    name: string;
+}
+
+interface GroupType {
+    id: number;
+    name: string;
+}
+
+function buildRowEdits(files: (MediaFile & { eventID: number | null; groupID: number | null })[]) {
+    const edits: Record<number, {
+        date: string;
+        time: string;
+        duration: string;
+        eventID: string;
+        groupID: string;
+    }> = {};
 
     for (const file of files) {
         const date = new Date(file.creationTime);
 
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hour = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        const hour = String(date.getUTCHours()).padStart(2, "0");
+        const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+        const seconds = String(date.getUTCSeconds()).padStart(2, "0");
 
         edits[file.id] = {
             date: `${year}-${month}-${day}`,
             time: `${hour}:${minutes}:${seconds}`,
             duration: String(file.duration > 0 ? file.duration : 30),
+            eventID: file.eventID != null ? String(file.eventID) : "",
+            groupID: file.groupID != null ? String(file.groupID) : ""
         };
     }
 
     return edits;
 }
 
-export default function FileViewer({files}: { files: MediaFile[] }) {
+export default function FileViewer({files, events, groups}: {
+    files: (MediaFile & {
+        eventID: number | null;
+        groupID: number | null;
+    })[];
+    events: EventType[];
+    groups: GroupType[];
+}) {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [rowEdits, setRowEdits] = useState<Record<number, { date: string; time: string; duration: string }>>(
+    const [rowEdits, setRowEdits] = useState<Record<number, {
+        date: string;
+        time: string;
+        duration: string;
+        eventID: string;
+        groupID: string;
+    }>>(
         () => buildRowEdits(files)
     );
+
+    useEffect(() => {
+        setRowEdits(buildRowEdits(files));
+    }, [files]);
+
     const router = useRouter();
     const sortedFiles = useMemo(() => {
         return [...files].sort(
@@ -41,24 +77,6 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
     const images = sortedFiles.filter(f => f.filePath.includes("/Images"));
     const transcripts = sortedFiles.filter(f => f.filePath.includes("/Transcripts"));
     const audio = sortedFiles.filter(f => f.filePath.includes("/Audio"));
-
-
-    function formatDate(timestamp: Date | string) {
-        return new Date(timestamp).toLocaleString("en-GB", {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-        })
-    }
-
-    function formatTime(timestamp: Date | string) {
-        return new Date(timestamp).toLocaleString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false
-        })
-    }
 
     function formatDuration(durationSeconds: number) {
         const hours = Math.floor(durationSeconds / 3600);
@@ -72,7 +90,10 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
         return `${minutes}:${seconds.toString().padStart(2, "0")}`;
     }
 
-    function updateRowEdit(fileId: number, field: "date" | "time" | "duration", value: string) {
+    function updateRowEdit(
+        fileId: number,
+        field: "date" | "time" | "duration" | "eventID" | "groupID",
+        value: string) {
         setRowEdits((prev) => ({
             ...prev,
             [fileId]: {
@@ -83,7 +104,23 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
 
     }
 
-    async function saveTimestamp(file: MediaFile) {
+    function buildTime(date: string, time: string) {
+        const [year, month, day] = date.split("-").map(Number);
+        const [hour, minute, second] = time.split(":").map(Number);
+
+        const timestamp = new Date(Date.UTC(
+            year,
+            month - 1,
+            day,
+            hour,
+            minute,
+            second || 0
+        ));
+
+        return timestamp.toISOString();
+    }
+
+    async function saveTimestamp(file: MediaFile & {eventID: number | null; groupID: number | null}) {
         const edit = rowEdits[file.id];
 
         if (!edit?.date) {
@@ -97,8 +134,12 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
         const body: {
             creationTime: string;
             duration?: number;
+            eventID?: number | null;
+            groupID?: number | null;
         } = {
-            creationTime: new Date(`${edit.date}T${edit.time}`).toISOString()
+            creationTime: buildTime(edit.date, edit.time),
+            eventID: edit.eventID ? parseInt(edit.eventID) : null,
+            groupID: edit.groupID ? parseInt(edit.groupID) : null
         };
 
         if (file.filePath.includes("/Images")) {
@@ -205,6 +246,8 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
                                 onSaveTimestamp={saveTimestamp}
                                 onDeleteFile={deleteFile}
                                 formatDuration={formatDuration}
+                                events={events}
+                                groups={groups}
                             />
 
                             <FileCategory
@@ -215,6 +258,8 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
                                 onSaveTimestamp={saveTimestamp}
                                 onDeleteFile={deleteFile}
                                 formatDuration={formatDuration}
+                                events={events}
+                                groups={groups}
                             />
 
                             <FileCategory
@@ -225,6 +270,8 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
                                 onSaveTimestamp={saveTimestamp}
                                 onDeleteFile={deleteFile}
                                 formatDuration={formatDuration}
+                                events={events}
+                                groups={groups}
                             />
 
                             <FileCategory
@@ -235,6 +282,8 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
                                 onSaveTimestamp={saveTimestamp}
                                 onDeleteFile={deleteFile}
                                 formatDuration={formatDuration}
+                                events={events}
+                                groups={groups}
                             />
                         </div>
                     </div>
@@ -245,14 +294,35 @@ export default function FileViewer({files}: { files: MediaFile[] }) {
 
 }
 
-function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, onDeleteFile, formatDuration}: {
+function FileCategory({
+                          title,
+                          files,
+                          rowEdits,
+                          onEditChange,
+                          onSaveTimestamp,
+                          onDeleteFile,
+                          formatDuration,
+                          events,
+                          groups
+                      }: {
     title: string,
-    files: MediaFile[],
-    rowEdits: Record<number, { date: string; time: string; duration: string }>;
-    onEditChange: (fileId: number, field: "date" | "time" | "duration", value: string) => void;
-    onSaveTimestamp: (file: MediaFile) => void;
+    files: (MediaFile & {
+        eventID: number | null;
+        groupID: number | null;
+    })[];
+    rowEdits: Record<number, {
+        date: string;
+        time: string;
+        duration: string;
+        eventID: string;
+        groupID: string;
+    }>;
+    onEditChange: (fileId: number, field: "date" | "time" | "duration" | "eventID" | "groupID", value: string) => void;
+    onSaveTimestamp: (file: MediaFile & {eventID: number | null; groupID: number | null}) => void;
     onDeleteFile: (fileId: number, fileName: string) => void;
-    formatDuration: (seconds: number) => string
+    formatDuration: (seconds: number) => string;
+    events: EventType[];
+    groups: GroupType[];
 }) {
     if (files.length === 0) {
         return null;
@@ -263,11 +333,14 @@ function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, on
             <h3 className="font-bold mb-3">{title} ({files.length})</h3>
 
             <div
-                className="grid grid-cols-[3fr_1.4fr_1.2fr_1fr_80px_56px] gap-3 px-3 py-2 border border-gray-300 bg-gray-100 rounded-t text-sm font-semibold">
+                className="grid grid-cols-[2.5fr_1.2fr_1.1fr_1fr_1.2fr_1.2fr_80px_56px] gap-3 px-3 py-2 border border-gray-300 bg-gray-100 rounded-t text-sm font-semibold">
                 <div>File Name</div>
                 <div>Date</div>
                 <div>Time</div>
                 <div>Duration</div>
+                <div>Event</div>
+                <div>Group</div>
+                <div className="text-center"></div>
                 <div className="text-center"></div>
             </div>
 
@@ -275,7 +348,7 @@ function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, on
                 {files.map((file, index) => (
                     <div
                         key={file.id}
-                        className={`grid grid-cols-[3fr_1.4fr_1.2fr_1fr_80px_56px] gap-3 px-3 py-3 items-center text-sm ${
+                        className={`grid grid-cols-[2.5fr_1.2fr_1.1fr_1fr_1.2fr_1.2fr_80px_56px] gap-3 px-3 py-3 items-center text-sm ${
                             index !== files.length - 1 ? "border-b border-gray-200" : ""
                         }`}
                     >
@@ -314,6 +387,32 @@ function FileCategory({title, files, rowEdits, onEditChange, onSaveTimestamp, on
                             ) : (
                                 file.duration > 0 ? formatDuration(file.duration) : "-"
                             )}
+                        </div>
+
+                        <div>
+                            <select
+                                value={rowEdits[file.id]?.eventID ?? ""}
+                                onChange={(e) => onEditChange(file.id, "eventID", e.target.value)}
+                                className="w-full border border-gray-300 rounded px-2 py-1 bg-white">
+                                <option value="">Select Event</option>
+                                {events.map((event) => (
+                                    <option key={event.id} value={event.id}>{event.name}</option>
+                                ))}
+
+                            </select>
+                        </div>
+
+                        <div>
+                            <select
+                                value={rowEdits[file.id]?.groupID ?? ""}
+                                onChange={(e) => onEditChange(file.id, "groupID", e.target.value)}
+                                className="w-full border border-gray-300 rounded px-2 py-1 bg-white">
+                                <option value="">Select Group</option>
+                                {groups.map((group) => (
+                                    <option key={group.id} value={group.id}>{group.name}</option>
+                                ))}
+
+                            </select>
                         </div>
 
                         <div className="flex justify-center">

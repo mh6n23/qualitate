@@ -66,7 +66,7 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
     onEdit: (file: MediaFile) => void
 }) {
     const fileStartTime = new Date(file.creationTime).getTime();
-    const offsetSeconds = Math.max(0, (fileStartTime - projectStartTime) / 1000);
+    const offsetSeconds = (fileStartTime - projectStartTime) / 1000;
     const position = offsetSeconds * pixelsPerSecond;
 
     // Set duration to 30 seconds if the file didn't previously have a duration
