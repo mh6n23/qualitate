@@ -34,6 +34,7 @@ model Event {
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
     files MediaFile[]
+    annotations Annotation[]
     @@unique([projectID, name])
 }
 
@@ -43,6 +44,7 @@ model Group {
     projectID Int
     project Project @relation(fields: [projectID], references: [id])
     files MediaFile[]
+    annotations Annotation[]
     @@unique([projectID, name])
 }
 
@@ -115,8 +117,13 @@ model Annotation {
     transcriptEndOffset Int?
     creationTime DateTime @default(now())
 
+    eventID Int
+    groupID Int
+
     project Project @relation(fields: [projectID], references: [id])
     code Code  @relation(fields: [codeID], references: [id])
+    event Event @relation(fields: [eventID], references: [id])
+    group Group @relation(fields: [groupID], references: [id])
     transcriptFile MediaFile? @relation("TranscriptSource", fields: [transcriptFileID], references: [id])
     mediaLinks AnnotationMediaLink[]
 }

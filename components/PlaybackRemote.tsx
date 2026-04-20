@@ -28,10 +28,10 @@ export default function PlaybackRemote({
     projectDuration: number;
     events: EventType[];
     groups: GroupType[];
-    selectedEventID: number | "all";
-    selectedGroupID: number | "all";
-    onEventChange: (value: number | "all") => void;
-    onGroupChange: (value: number | "all") => void;
+    selectedEventID: number | null;
+    selectedGroupID: number | null;
+    onEventChange: (value: number) => void;
+    onGroupChange: (value: number) => void;
 }) {
     const [currTime, setCurrTime] = useAtom(currTimeAtom);
     const [isPlaying, setIsPlaying] = useAtom(playingAtom);
@@ -205,9 +205,9 @@ export default function PlaybackRemote({
                     <div className="flex items-center gap-2">
                         <label className="text-white text-sm">Event</label>
                         <select
-                        value={selectedEventID} onChange={(e) => onEventChange(e.target.value === "all" ? "all" : parseInt(e.target.value))}
-                        className="border border-gray-300 rounded px-2 py-1 bg-white text-black">
-                            <option value="all">All Events</option>
+                        value={selectedEventID ?? ""} onChange={(e) => onEventChange(parseInt(e.target.value))}
+                        className="border border-gray-300 rounded px-2 py-1 bg-white text-black"
+                        disabled={events.length === 0}>
                             {events.map(event => (
                                 <option key={event.id} value={event.id}>{event.name}</option>
                             ))}
@@ -217,9 +217,9 @@ export default function PlaybackRemote({
                     <div className="flex items-center gap-2">
                         <label className="text-white text-sm">Group</label>
                         <select
-                            value={selectedGroupID} onChange={(e) => onGroupChange(e.target.value === "all" ? "all" : parseInt(e.target.value))}
-                            className="border border-gray-300 rounded px-2 py-1 bg-white text-black">
-                            <option value="all">All Groups</option>
+                            value={selectedGroupID ?? ""} onChange={(e) => onGroupChange(parseInt(e.target.value))}
+                            className="border border-gray-300 rounded px-2 py-1 bg-white text-black"
+                            disabled={groups.length === 0}>
                             {groups.map(group => (
                                 <option key={group.id} value={group.id}>{group.name}</option>
                             ))}

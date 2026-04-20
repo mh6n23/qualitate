@@ -2,7 +2,7 @@
 
 import {useEffect, useRef} from "react";
 import {useAtomValue} from "jotai";
-import {currTimeAtom} from "@/app/atoms";
+import {currTimeAtom, playingAtom} from "@/app/atoms";
 import {MediaFile} from "@prisma/client";
 
 interface AudioPlayerProps {
@@ -13,6 +13,7 @@ interface AudioPlayerProps {
 export default function AudioPlayer({file, projectStartTime}: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const currTime = useAtomValue(currTimeAtom);
+    const playing = useAtomValue(playingAtom);
     const fileStartTime = new Date(file.creationTime).getTime();
     const offsetSecs = (fileStartTime - projectStartTime) / 1000;
     const targetTime = currTime - offsetSecs;
@@ -22,6 +23,11 @@ export default function AudioPlayer({file, projectStartTime}: AudioPlayerProps) 
 
         if (!audio)
         {
+            return;
+        }
+
+        if (!playing) {
+            audio.pause();
             return;
         }
 
@@ -41,18 +47,19 @@ export default function AudioPlayer({file, projectStartTime}: AudioPlayerProps) 
         const playPromise = audio.play();
 
         if (playPromise) {
-            playPromise.catch(() => {
-
+            playPromise.catch((error) => {
+                console.error("Error playing audio: ", error);
             });
         }
 
-    }, [targetTime, file.duration]);
+    }, [targetTime, file.duration, playing]);
 
     return (
         <audio
             ref={audioRef}
             src={file.filePath}
             preload="auto"
+            muted={false}
             hidden
         />
     )

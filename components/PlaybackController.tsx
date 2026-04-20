@@ -50,8 +50,20 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
         const [modalMode, setModalMode] = useState<"create" | "edit">("create");
         const [editedAnnotationID, setEditedAnnotationID] = useState<number | null>(null);
 
-        const [selectedEventID, setSelectedEventID] = useState<number | "all">("all");
-        const [selectedGroupID, setSelectedGroupID] = useState<number | "all">("all");
+        const [selectedEventID, setSelectedEventID] = useState<number | null>(events[0]?.id ?? null);
+        const [selectedGroupID, setSelectedGroupID] = useState<number | null>(groups[0]?.id ?? null);
+
+        useEffect(() => {
+            if (selectedEventID == null && events.length > 0) {
+                setSelectedEventID(events[0].id);
+            }
+        }, [events, selectedEventID]);
+
+        useEffect(() => {
+            if (selectedGroupID == null && groups.length > 0) {
+                setSelectedGroupID(groups[0].id);
+            }
+        }, [groups, selectedGroupID]);
 
         //Used to handle just the transcript selection
         const [selectedTranscriptAnnotation, setSelectedTranscriptAnnotation] = useState<{
@@ -152,10 +164,19 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
         }));
 
         const viewableFiles = files.filter((file) => {
-            const inEvent = selectedEventID === "all" || file.eventID === selectedEventID;
-            const inGroup = selectedGroupID === "all" || file.groupID === selectedGroupID;
+            if (selectedEventID == null || selectedGroupID == null) {
+                return false;
+            }
 
-            return inEvent && inGroup;
+            return file.eventID === selectedEventID && file.groupID === selectedGroupID;
+        })
+
+        const viewableAnnotations = annotations.filter((annotation) => {
+            if (selectedEventID == null || selectedGroupID == null) {
+                return false;
+            }
+
+            return annotation.eventID === selectedEventID && annotation.groupID === selectedGroupID;
         })
 
         function getFileStartTime(file: MediaFile) {
@@ -292,7 +313,7 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
                 .filter((file) => {
                     const fileStart = getFileStartTime(file);
                     const fileEnd = getFileEndTime(file);
-                    const absoluteCurrentTime = projectStartTime + currentTime * 1000;
+                    const absoluteCurrentTime = viewableStartTime + currentTime * 1000;
                     return absoluteCurrentTime >= fileStart && absoluteCurrentTime <= fileEnd;
                 })
                 .map((file) => file.id);
@@ -502,13 +523,15 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
         return (
             <div className="flex flex-col w-full mt-4">
 
+                {currentAudioFiles.map((audioFile) => (
+                    <AudioPlayer key={audioFile.id} file={audioFile} projectStartTime={viewableStartTime}/>
+                ))}
+
                 {isAnnotationModalOpen && (
                     <div className="modal-overlay">
                         <div className="modal-content w-full max-w-2xl">
 
-                            {currentAudioFiles.map((audioFile) => (
-                                <AudioPlayer key={audioFile.id} file={audioFile} projectStartTime={viewableStartTime}/>
-                            ))}
+
 
                             {/* Top Row with title and exit button */}
                             <div className="grid grid-cols-3 items-center border-b border-gray-300 pb-2 mb-4">
@@ -772,7 +795,7 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
                 </div>
 
                 <div className="w-full border-t border-gray-300">
-                    <Timeline files={viewableFiles} annotations={annotations} projectStartTime={viewableStartTime}
+                    <Timeline files={viewableFiles} annotations={viewableAnnotations} projectStartTime={viewableStartTime}
                               onEditAnnotation={handleEditExisting} projectDuration={projectDurationSecs}/>
                 </div>
             </div>

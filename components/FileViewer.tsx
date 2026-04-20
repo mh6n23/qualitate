@@ -352,7 +352,7 @@ function FileCategory({
                             index !== files.length - 1 ? "border-b border-gray-200" : ""
                         }`}
                     >
-                        <div className="break-words font-medium">
+                        <div className="wrap-break-word font-medium min-w-0">
                             {file.fileName}
                         </div>
 

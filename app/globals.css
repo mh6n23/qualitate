@@ -151,6 +151,9 @@
   cursor: pointer;
   min-width: 80px;
   font-size: 22px;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .regular-button:hover {background-color: lightblue}

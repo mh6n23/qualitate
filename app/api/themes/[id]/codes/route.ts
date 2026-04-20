@@ -26,7 +26,9 @@ export async function GET(
                             include: {
                                 annotations: {
                                     include: {
-                                        transcriptFile: true
+                                        transcriptFile: true,
+                                        event: true,
+                                        group: true
                                     },
                                     orderBy: {startTime: "asc"}
                                 }

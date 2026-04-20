@@ -42,6 +42,13 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
         )
     }
 
+    if (body.transcriptFileID == null) {
+        return NextResponse.json(
+            {error: "No transcript file provided"},
+            {status: 400}
+        );
+    }
+
     if (body.startTime > body.endTime) {
         return NextResponse.json(
             {error: "End Time can't be before Start Time"},
@@ -96,12 +103,22 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
                 {status: 400}
             )
         }
+
+        if (!transcriptFile.eventID == null || transcriptFile.groupID == null) {
+            return NextResponse.json(
+                {error: "Transcript file isn't assigned to a group or event"},
+                {status: 400}
+            );
+        }
+
     }
 
     const annotation = await prisma.annotation.create({
         data: {
             projectID,
             codeID: body.codeID,
+            eventID: transcriptFile.eventID,
+            groupID: transcriptFile.groupID,
             startTime: body.startTime,
             endTime: body.endTime,
             transcriptFileID: body.transcriptFileID ?? null,

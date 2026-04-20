@@ -13,7 +13,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         include: {
             annotations: {
                 include: {
-                    transcriptFile: true
+                    transcriptFile: true,
+                    event: true,
+                    group: true
                 },
                 orderBy: {startTime: "asc"}
             }

@@ -19,6 +19,12 @@ interface Annotation {
     transcriptFile: {
         fileName: string;
     } | null;
+    event: {
+        name: string;
+    } | null;
+    group: {
+        name: string;
+    } | null;
 }
 
 interface Code {
@@ -106,9 +112,6 @@ export default function Themes({projectID}: ThemeProps) {
     }
 
 
-
-
-
     function formatTime(totalSeconds: number) {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -178,8 +181,8 @@ export default function Themes({projectID}: ThemeProps) {
         }
 
         try {
-            const response = await fetch (themeEditorMode === "edit" ?
-            `/api/themes/${editingThemeID}` : `/api/projects/${projectID}/themes`,
+            const response = await fetch(themeEditorMode === "edit" ?
+                    `/api/themes/${editingThemeID}` : `/api/projects/${projectID}/themes`,
                 {
                     method: themeEditorMode === "edit" ? "PATCH" : "POST",
                     headers: {"Content-Type": "application/json"},
@@ -295,7 +298,7 @@ export default function Themes({projectID}: ThemeProps) {
             const data = await response.json();
 
             if (!response.ok) {
-                alert (data.error || "Failed to update code");
+                alert(data.error || "Failed to update code");
                 return;
             }
 
@@ -417,8 +420,9 @@ export default function Themes({projectID}: ThemeProps) {
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-bold">Themes</h3>
 
-                                        <button type="button" className="small-button"
-                                                onClick={openCreateThemeEditor}>Add Theme</button>
+                                    <button type="button" className="small-button"
+                                            onClick={openCreateThemeEditor}>Add Theme
+                                    </button>
                                 </div>
 
 
@@ -428,17 +432,17 @@ export default function Themes({projectID}: ThemeProps) {
                                     ) : (
                                         themes.map((theme) => (
                                             <div
-                                            key={theme.id}
-                                            className={`border rounded p-3 ${
-                                                selectedThemeID === theme.id
-                                                ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-300 bg-white"
-                                            }`}>
+                                                key={theme.id}
+                                                className={`border rounded p-3 ${
+                                                    selectedThemeID === theme.id
+                                                        ? "border-blue-500 bg-blue-50"
+                                                        : "border-gray-300 bg-white"
+                                                }`}>
 
                                                 <div className="flex items-start justify-between gap-2">
                                                     <button type="button"
-                                                    onClick={() => selectTheme(theme.id)}
-                                                    className="flex-1 text-left">
+                                                            onClick={() => selectTheme(theme.id)}
+                                                            className="flex-1 text-left">
 
                                                         <div className="font-semibold">{theme.name}</div>
 
@@ -447,16 +451,18 @@ export default function Themes({projectID}: ThemeProps) {
                                                         </div>
 
                                                         {theme.description && (
-                                                            <div className="text-xs text-gray-500 mt-1 wrap-break-word">{theme.description}</div>
+                                                            <div
+                                                                className="text-xs text-gray-500 mt-1 wrap-break-word">{theme.description}</div>
                                                         )}
 
                                                     </button>
 
-                                                    <button type="button" className="small-button flex items-center justify-center"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openEditThemeEditor(theme);
-                                                    }}>
+                                                    <button type="button"
+                                                            className="small-button flex items-center justify-center"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openEditThemeEditor(theme);
+                                                            }}>
                                                         Edit
                                                     </button>
                                                 </div>
@@ -477,48 +483,67 @@ export default function Themes({projectID}: ThemeProps) {
                                 ) : (
                                     projectCodes.length === 0 ? (
                                         <p className="text-sm text-gray-500">No codes have been created yet.</p>
-                                        ) : (
-                                            projectCodes.map((code) => {
+                                    ) : (
+                                        [...projectCodes].sort((a, b) => {
+                                            const aInTheme = themeCodeIDs.has(a.id);
+                                            const bInTheme = themeCodeIDs.has(b.id);
+
+                                            if (aInTheme === bInTheme) {
+                                                return a.name.localeCompare(b.name);
+                                            }
+
+                                            return aInTheme ? -1 : 1;
+                                        })
+                                            .map((code) => {
                                                 const inTheme = themeCodeIDs.has(code.id);
 
-                                                return(
+                                                return (
                                                     <div
-                                                    key={code.id}
-                                                    className={`border rounded p-3 ${
+                                                        key={code.id}
+                                                        className={`border rounded p-3 transition-shadow ${
+                                                            inTheme
+                                                                ? "border-green-500 bg-green-50"
+                                                                : "border-red-400 bg-red-50"
+                                                        } ${
                                                         selectedCodeID === code.id
-                                                        ? "border-blue-500 bg-blue-50"
-                                                            : inTheme
-                                                        ? "border-green-500 bg-green-50"
-                                                            : "border-red-400 bg-red-50"
-                                                    }`}>
+                                                            ? "ring-2 ring-blue-500 shadow-md"
+                                                            : ""
+                                                        }`}>
 
                                                         <div className="flex items-start justify-between gap-2">
-                                                            <button type="button" onClick={() => setSelectedCodeID(code.id)}
-                                                            className="flex-1 text-left">
+                                                            <button type="button"
+                                                                    onClick={() => setSelectedCodeID(code.id)}
+                                                                    className="flex-1 text-left">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="inline-block w-3 h-3 rounded-full border border-gray-300"
-                                                                    style={{backgroundColor: code.colour}}></span>
+                                                                    <span
+                                                                        className="inline-block w-3 h-3 rounded-full border border-gray-300"
+                                                                        style={{backgroundColor: code.colour}}></span>
 
                                                                     <span className="font-semibold">{code.name}</span>
                                                                 </div>
 
-                                                                <div className="text-xs text-gray-600 mt-1">{code.annotations.length} annotations</div>
+                                                                <div
+                                                                    className="text-xs text-gray-600 mt-1">{code.annotations.length} annotations
+                                                                </div>
 
                                                                 {code.description && (
-                                                                    <div className="text-xs text-gray-500 mt-1 wrap-break-word">{code.description}</div>
+                                                                    <div
+                                                                        className="text-xs text-gray-500 mt-1 wrap-break-word">{code.description}</div>
                                                                 )}
                                                             </button>
 
                                                             <div className="flex items-center gap-2">
-                                                                <button type="button" className="small-button flex items-center justify-center"
-                                                                onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openCodeEditor(code);
-                                                                }}>
+                                                                <button type="button"
+                                                                        className="small-button flex items-center justify-center"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            openCodeEditor(code);
+                                                                        }}>
                                                                     Edit
-                                                            </button>
+                                                                </button>
 
-                                                                <button type="button" className="small-button flex items-center justify-center w-4 h-4 p-0"
+                                                                <button type="button"
+                                                                        className="small-button flex items-center justify-center w-4 h-4 p-0"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             if (inTheme) {
@@ -532,10 +557,13 @@ export default function Themes({projectID}: ThemeProps) {
                                                             </div>
                                                         </div>
 
-                                                        </div>
+                                                    </div>
                                                 );
+
                                             })
-                                        )
+
+
+                                    )
                                 )}
                             </div>
 
@@ -569,6 +597,11 @@ export default function Themes({projectID}: ThemeProps) {
                                                             {annotation.transcriptFile.fileName}
                                                         </div>
                                                     )}
+
+                                                    <div className="text-xs text-gray-500 mt-1">
+                                                        Event: {annotation.event?.name ?? "Unassigned"} | Group: {annotation.group?.name ?? "Group"}
+                                                    </div>
+
                                                 </div>
                                             ))
                                         )}
@@ -589,7 +622,8 @@ export default function Themes({projectID}: ThemeProps) {
 
                                         <div className="flex justify-end">
                                             <button type="button" onClick={closeThemeEditor}
-                                            className="w-7 h-7 border border-gray-300 rounded hover:bg-gray-100 flex items-center justify-center text-sm">X</button>
+                                                    className="w-7 h-7 border border-gray-300 rounded hover:bg-gray-100 flex items-center justify-center text-sm">X
+                                            </button>
                                         </div>
                                     </div>
 
@@ -597,9 +631,9 @@ export default function Themes({projectID}: ThemeProps) {
                                         <div>
                                             <label className="block text-sm font-medium mb-1">Name</label>
                                             <input
-                                            value={themeFormName}
-                                            onChange={(e) => setThemeFormName(e.target.value)}
-                                            className="w-full border border-gray-300 rounded px-2 py-1"/>
+                                                value={themeFormName}
+                                                onChange={(e) => setThemeFormName(e.target.value)}
+                                                className="w-full border border-gray-300 rounded px-2 py-1"/>
                                         </div>
 
                                         <div>
@@ -617,7 +651,8 @@ export default function Themes({projectID}: ThemeProps) {
                                                 </button>
                                             )}
 
-                                            <button type="button" className="regular-button" onClick={saveTheme}>Save</button>
+                                            <button type="button" className="regular-button" onClick={saveTheme}>Save
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -636,7 +671,8 @@ export default function Themes({projectID}: ThemeProps) {
 
                                         <div className="flex justify-end">
                                             <button type="button" onClick={closeCodeEditor}
-                                                    className="w-7 h-7 border border-gray-300 rounded hover:bg-gray-100 flex items-center justify-center text-sm">X</button>
+                                                    className="w-7 h-7 border border-gray-300 rounded hover:bg-gray-100 flex items-center justify-center text-sm">X
+                                            </button>
                                         </div>
                                     </div>
 
@@ -658,7 +694,9 @@ export default function Themes({projectID}: ThemeProps) {
                                         </div>
 
                                         <div className="flex justify-center">
-                                            <button type="button" className="regular-button" onClick={saveCodeEdit}>Save</button>
+                                            <button type="button" className="regular-button"
+                                                    onClick={saveCodeEdit}>Save
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
