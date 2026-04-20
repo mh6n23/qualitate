@@ -1,6 +1,7 @@
 'use client';
 
 import {useRef} from "react";
+import Link from "next/link";
 import {Annotation, AnnotationMediaLink, Code, MediaFile} from "@prisma/client";
 import FileUploader from "@/components/FileUploadForm";
 import FileViewer from "@/components/FileViewer";
@@ -43,6 +44,7 @@ export default function ProjectWorkspace({projectId, projectStartTime, files, an
         <>
         <div className="grid grid-cols-3 items-center">
             <div className="flex justify-start gap-4">
+                <Link href="/" className="regular-button">Projects</Link>
                 <FileUploader projectId = {projectId} events={events} groups={groups}/>
                 <FileViewer files={files} events={events} groups={groups}/>
             </div>

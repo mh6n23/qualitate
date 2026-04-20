@@ -64,7 +64,9 @@ export async function DELETE(request: Request, context: {params: Promise<{id: st
             files: true,
             annotations: true,
             themes: true,
-            codes: true
+            codes: true,
+            events: true,
+            groups: true
         }
     });
 
@@ -126,6 +128,14 @@ export async function DELETE(request: Request, context: {params: Promise<{id: st
         });
 
         await tx.mediaFile.deleteMany({
+            where: {projectID: projectID}
+        });
+
+        await tx.group.deleteMany({
+            where: {projectID: projectID}
+        });
+
+        await tx.event.deleteMany({
             where: {projectID: projectID}
         });
 

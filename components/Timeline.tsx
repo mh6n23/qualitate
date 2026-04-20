@@ -33,7 +33,7 @@ function AnnotationBlock({annotation, pixelsPerSecond, onEdit}: {
             e.stopPropagation();
             onEdit(annotation.id);
         }}
-             className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-[10px] truncate px-1 flex items-center"
+             className="absolute top-1/2 -translate-y-1/2 h-10 rounded text-white text-xs font-semibold truncate px-1 flex items-center"
              style={{
                  left: `${position}px`,
                  width: `${width}px`,
@@ -79,7 +79,7 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
             e.stopPropagation();
             onEdit(file);
         }}
-             className="absolute top-1/2 -translate-y-1/2 h-10 bg-blue-600 rounded text-white text-[10px] truncate px-1 flex items-center"
+             className="absolute top-1/2 -translate-y-1/2 h-10 bg-blue-600 rounded text-white text-xs font-semibold truncate px-1 flex items-center"
              style={{
                  left: `${position}px`,
                  width: `${width}px`
@@ -250,7 +250,7 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
 
     return (
         <>
-            <div className="flex border-2 border-gray-800 bg-gray-400 min-h-[100px]">
+            <div className="flex border-2 border-gray-800 bg-gray-400 min-h-25">
                 <div className="w-24 shrink-0 bg-gray-900 text-white flex flex-col border-r border-gray-500 z-40">
                     <div
                         className="h-16 flex items-center justify-center font-bold text-[10px] border-b border-gray-700">ANNOTATIONS
@@ -307,7 +307,7 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
 
                             <div className="text-center">
                                 <h2 className="text-lg font-bold">Edit File</h2>
-                                <p className="text-sm text-gray-600 break-words">{editingFile.fileName}</p>
+                                <p className="text-sm text-gray-600 wrap-break-word">{editingFile.fileName}</p>
                             </div>
 
                             <div className="flex justify-end">

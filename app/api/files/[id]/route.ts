@@ -28,14 +28,35 @@ export async function DELETE(
         );
     }
 
+    const annotationCount = await prisma.annotation.count({
+        where: {
+            transcriptFileID: fileID
+        }
+    });
+
+    if (annotationCount > 0) {
+        return NextResponse.json(
+            {error: "Can't delete transcript as it has assigned annotations"},
+            {status: 400}
+        );
+    }
+
     try {
         const relPath = file.filePath.startsWith("/") ?
             file.filePath.slice(1)
             : file.filePath;
         const absPath = join(process.cwd(), "public", relPath);
 
-        await prisma.mediaFile.delete({
-            where: {id: fileID}
+        await prisma.$transaction(async (tx) => {
+            await tx.annotationMediaLink.deleteMany({
+                where: {
+                    mediaFileID: fileID
+                }
+            });
+
+            await tx.mediaFile.delete({
+                where: {id: fileID}
+            });
         });
 
         try {
