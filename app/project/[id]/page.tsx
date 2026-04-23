@@ -3,19 +3,17 @@ import {notFound} from "next/navigation";
 import ProjectWorkspace from "@/components/ProjectWorkspace";
 
 
-interface PageProps
-{
-    params: Promise<{id:string}>;
+interface PageProps {
+    params: Promise<{ id: string }>;
 }
 
-export default async function ProjectPage({params}: PageProps)
-{
+export default async function ProjectPage({params}: PageProps) {
 
-    const{id} = await params;
+    const {id} = await params;
     const projectId = parseInt(id);
 
     const project = await prisma.project.findUnique({
-        where: {id:projectId},
+        where: {id: projectId},
         include: {
             files: {
                 include: {
@@ -26,6 +24,7 @@ export default async function ProjectPage({params}: PageProps)
             annotations: {
                 include: {
                     code: true,
+                    transcriptFile: true,
                     mediaLinks: {
                         include: {
                             mediaFile: true
@@ -36,6 +35,7 @@ export default async function ProjectPage({params}: PageProps)
                     startTime: "asc"
                 }
             },
+
             events: {
                 orderBy: {
                     name: "asc"
@@ -49,8 +49,7 @@ export default async function ProjectPage({params}: PageProps)
         }
     });
 
-    if (!project)
-    {
+    if (!project) {
         notFound();
     }
 

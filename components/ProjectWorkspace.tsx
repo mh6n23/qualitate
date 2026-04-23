@@ -29,6 +29,7 @@ interface ProjectWorkspaceProps {
     })[];
     annotations: (Annotation & {
         code: Code;
+        transcriptFile: MediaFile | null;
         mediaLinks: (AnnotationMediaLink & {
             mediaFile: MediaFile;
         })[];

@@ -1,8 +1,7 @@
 import {NextResponse} from "next/server";
 import {prisma} from '@/lib/prisma';
 
-export async function GET(request: Request, context: {params: Promise<{id: string}>})
-{
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
     const {id} = await context.params;
     const projectID = parseInt(id);
 
@@ -23,8 +22,7 @@ export async function GET(request: Request, context: {params: Promise<{id: strin
     return NextResponse.json(annotations);
 }
 
-export async function POST(request: Request, context: {params: Promise<{id: string}>})
-{
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     const {id} = await context.params;
     const projectID = parseInt(id);
     const body = await request.json();
@@ -34,8 +32,7 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
             {error: "Couldn't find code to assign to annotation"},
             {status: 404}
         );
-    }
-    else if (body.startTime == null || body.endTime == null) {
+    } else if (body.startTime == null || body.endTime == null) {
         return NextResponse.json(
             {error: "Couldn't find times to assign to annotation"},
             {status: 404}
@@ -71,7 +68,7 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
     }
 
     const linkedFiles = Array.isArray(body.linkedMediaFileIDs)
-    ? await prisma.mediaFile.findMany({
+        ? await prisma.mediaFile.findMany({
             where: {
                 id: {in: body.linkedMediaFileIDs},
                 projectID
@@ -79,46 +76,44 @@ export async function POST(request: Request, context: {params: Promise<{id: stri
         })
         : [];
 
-    if (linkedFiles.length !== (body.linkedMediaFileIDs?.length ?? 0))
-    {
+    if (linkedFiles.length !== (body.linkedMediaFileIDs?.length ?? 0)) {
         return NextResponse.json(
             {error: "A file associated with the annotation couldn't be found"},
             {status: 400}
         )
     }
 
-    let transcriptFile = null;
-
-    if (body.transcriptFileID != null) {
-        transcriptFile = await prisma.mediaFile.findFirst({
-            where: {
-                id: body.transcriptFileID,
-                projectID
-            }
-        });
-
-        if (!transcriptFile) {
-            return NextResponse.json(
-                {error: "The transcript file being annotated couldn't be found"},
-                {status: 400}
-            )
+    const transcriptFile = await prisma.mediaFile.findFirst({
+        where: {
+            id: body.transcriptFileID,
+            projectID
         }
+    });
 
-        if (!transcriptFile.eventID == null || transcriptFile.groupID == null) {
-            return NextResponse.json(
-                {error: "Transcript file isn't assigned to a group or event"},
-                {status: 400}
-            );
-        }
-
+    if (!transcriptFile) {
+        return NextResponse.json(
+            {error: "The transcript file being annotated couldn't be found"},
+            {status: 400}
+        )
     }
+
+    if (transcriptFile.eventID == null || transcriptFile.groupID == null) {
+        return NextResponse.json(
+            {error: "Transcript file isn't assigned to a group or event"},
+            {status: 400}
+        );
+    }
+
+    const eventID = transcriptFile.eventID;
+    const groupID = transcriptFile.groupID;
+
 
     const annotation = await prisma.annotation.create({
         data: {
             projectID,
             codeID: body.codeID,
-            eventID: transcriptFile.eventID,
-            groupID: transcriptFile.groupID,
+            eventID,
+            groupID,
             startTime: body.startTime,
             endTime: body.endTime,
             transcriptFileID: body.transcriptFileID ?? null,

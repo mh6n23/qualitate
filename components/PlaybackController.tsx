@@ -18,6 +18,7 @@ interface PlaybackControllerProps {
     })[];
     annotations: (Annotation & {
         code: Code;
+        transcriptFile: MediaFile | null;
         mediaLinks: (AnnotationMediaLink & {
             mediaFile: MediaFile;
         })[];
@@ -190,7 +191,7 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
 
             if (file.filePath.includes("/Images")) {
                 // Default value
-                return 30000;
+                return 10000;
             }
 
             return 0;
@@ -790,8 +791,8 @@ const PlaybackController = forwardRef<PlaybackControllerHandle, PlaybackControll
                         groups={groups}
                         selectedEventID={selectedEventID}
                         selectedGroupID={selectedGroupID}
-                        onEventChange={setSelectedEventID}
-                        onGroupChange={setSelectedGroupID}/>
+                        onEventChangeAction={setSelectedEventID}
+                        onGroupChangeAction={setSelectedGroupID}/>
                 </div>
 
                 <div className="w-full border-t border-gray-300">

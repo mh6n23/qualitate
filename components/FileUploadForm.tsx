@@ -215,7 +215,7 @@ export default function FileUploader({projectId, events, groups}: {
                     duration = await getVTTduration(file);
                 } else {
                     // Set default duration for image files
-                    duration = 30;
+                    duration = 10;
                 }
 
                 const formData = new FormData();

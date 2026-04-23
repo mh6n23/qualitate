@@ -6,26 +6,31 @@ import {currTimeAtom, pixelsPerSecondAtom} from "@/app/atoms";
 import {Annotation, AnnotationMediaLink, Code, MediaFile} from "@prisma/client";
 import {useRouter} from "next/navigation";
 
-
 interface TimelineProps {
     files: MediaFile[];
     annotations: (Annotation & {
         code: Code;
+        transcriptFile: MediaFile | null;
         mediaLinks: (AnnotationMediaLink & {
             mediaFile: MediaFile;
         })[];
     })[];
     projectStartTime: number;
-    onEditAnnotation: (annotationID : number) => void;
+    onEditAnnotation: (annotationID: number) => void;
     projectDuration: number;
 }
 
-function AnnotationBlock({annotation, pixelsPerSecond, onEdit}: {
-    annotation: Annotation & { code: Code };
+function AnnotationBlock({annotation, projectStartTime, pixelsPerSecond, onEdit}: {
+    annotation: Annotation & {
+        code: Code;
+        transcriptFile: MediaFile | null;};
+    projectStartTime: number;
     pixelsPerSecond: number;
-    onEdit: (annotationID : number) => void;
+    onEdit: (annotationID: number) => void;
 }) {
-    const position = annotation.startTime * pixelsPerSecond;
+    const position = annotation.transcriptFile
+        ? (((new Date(annotation.transcriptFile.creationTime).getTime() + (annotation.startTime * 1000)) - projectStartTime) / 1000) * pixelsPerSecond
+        : annotation.startTime * pixelsPerSecond;
     const width = Math.max((annotation.endTime - annotation.startTime) * pixelsPerSecond, 6)
 
     return (
@@ -51,7 +56,7 @@ function getDuration(file: MediaFile) {
     }
 
     if (file.filePath.includes("/Images/")) {
-        return 30;
+        return 10;
     }
 
     return 0;
@@ -89,9 +94,12 @@ function FileBlock({file, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-function AnnotationTrack({annotations, pixelsPerSecond, onEdit} : {
-    annotations: (Annotation & {code:Code})[];
+function AnnotationTrack({annotations, projectStartTime, pixelsPerSecond, onEdit}: {
+    annotations: (Annotation & {
+        code: Code
+        transcriptFile: MediaFile | null;})[];
     pixelsPerSecond: number;
+    projectStartTime: number;
     onEdit: (annotationID: number) => void;
 }) {
     return (
@@ -100,10 +108,11 @@ function AnnotationTrack({annotations, pixelsPerSecond, onEdit} : {
                 <AnnotationBlock
                     key={annotation.id}
                     annotation={annotation}
+                    projectStartTime={projectStartTime}
                     pixelsPerSecond={pixelsPerSecond}
                     onEdit={onEdit}
-        />
-    ))}
+                />
+            ))}
         </div>
     );
 }
@@ -127,7 +136,13 @@ function Track({files, projectStartTime, pixelsPerSecond, onEdit}: {
     )
 }
 
-export default function Timeline({files, annotations, projectStartTime, onEditAnnotation, projectDuration}: TimelineProps) {
+export default function Timeline({
+                                     files,
+                                     annotations,
+                                     projectStartTime,
+                                     onEditAnnotation,
+                                     projectDuration
+                                 }: TimelineProps) {
     // Default for now but i'll allow it to be changed later
     const [pixelsPerSecond] = useAtom(pixelsPerSecondAtom);
 
@@ -281,7 +296,8 @@ export default function Timeline({files, annotations, projectStartTime, onEditAn
 
                     <div className="flex flex-col min-w-full"
                          style={{minWidth: `calc(100vw + ${(projectDuration * pixelsPerSecond) + 200}px)`}}>
-                        <AnnotationTrack annotations={annotations} pixelsPerSecond={pixelsPerSecond} onEdit={onEditAnnotation}/>
+                        <AnnotationTrack annotations={annotations} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
+                                         onEdit={onEditAnnotation}/>
                         <Track files={videoFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}
                                onEdit={openEditor}/>
                         <Track files={imageFiles} projectStartTime={projectStartTime} pixelsPerSecond={pixelsPerSecond}

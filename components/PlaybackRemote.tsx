@@ -21,8 +21,8 @@ export default function PlaybackRemote({
                                            groups,
                                            selectedEventID,
                                            selectedGroupID,
-                                           onEventChange,
-                                           onGroupChange
+                                           onEventChangeAction,
+                                           onGroupChangeAction
                                        }: {
     projectStartTime: number;
     projectDuration: number;
@@ -30,8 +30,8 @@ export default function PlaybackRemote({
     groups: GroupType[];
     selectedEventID: number | null;
     selectedGroupID: number | null;
-    onEventChange: (value: number) => void;
-    onGroupChange: (value: number) => void;
+    onEventChangeAction: (value: number) => void;
+    onGroupChangeAction: (value: number) => void;
 }) {
     const [currTime, setCurrTime] = useAtom(currTimeAtom);
     const [isPlaying, setIsPlaying] = useAtom(playingAtom);
@@ -205,7 +205,7 @@ export default function PlaybackRemote({
                     <div className="flex items-center gap-2">
                         <label className="text-white text-sm">Event</label>
                         <select
-                        value={selectedEventID ?? ""} onChange={(e) => onEventChange(parseInt(e.target.value))}
+                        value={selectedEventID ?? ""} onChange={(e) => onEventChangeAction(parseInt(e.target.value))}
                         className="border border-gray-300 rounded px-2 py-1 bg-white text-black"
                         disabled={events.length === 0}>
                             {events.map(event => (
@@ -217,7 +217,7 @@ export default function PlaybackRemote({
                     <div className="flex items-center gap-2">
                         <label className="text-white text-sm">Group</label>
                         <select
-                            value={selectedGroupID ?? ""} onChange={(e) => onGroupChange(parseInt(e.target.value))}
+                            value={selectedGroupID ?? ""} onChange={(e) => onGroupChangeAction(parseInt(e.target.value))}
                             className="border border-gray-300 rounded px-2 py-1 bg-white text-black"
                             disabled={groups.length === 0}>
                             {groups.map(group => (
