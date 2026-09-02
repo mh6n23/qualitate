@@ -53,6 +53,7 @@ Create `.env` with your database connection string and an auth secret:
 ```
 DATABASE_URL="postgresql://user:password@localhost:5432/qualitate"
 AUTH_SECRET="<random string, e.g. from `npx auth secret`>"
+
 ```
 
 Then set up the database and start the dev server:
