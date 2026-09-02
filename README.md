@@ -48,10 +48,12 @@ cd qualitate
 npm install
 ```
 
-Create `.env` with your database connection string:
+Create `.env` with your database connection string and an auth secret:
 
 ```
 DATABASE_URL="postgresql://user:password@localhost:5432/qualitate"
+AUTH_SECRET="<random string, e.g. from `npx auth secret`>"
+
 ```
 
 Then set up the database and start the dev server:
@@ -66,7 +68,7 @@ The app runs at http://localhost:3000.
 ## Tests
 
 ```bash
-npm run test
+npm run test:run
 ```
 
 ## Evaluation
